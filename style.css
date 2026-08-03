@@ -1,0 +1,143 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------- Periodic table grid ---------- */
+
+/* 18-column periodic-table grid. Each cell is a fixed square. */
+.table {
+  display: grid;
+  grid-template-columns: repeat(18, 44px);
+  grid-auto-rows: 44px;
+  gap: 4px;
+}
+
+/* Cells are links now, but look the same. */
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #333;
+  background: #fff;
+  font-size: 16px;
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Default: show the symbol. The atomic number is hidden. */
+.cell .num { display: none; }
+
+/* On hover: hide the symbol, show the atomic number in its place. */
+.cell:hover { background: #eeeeee; }
+.cell:hover .sym { display: none; }
+.cell:hover .num { display: inline; }
+
+/* ---------- Single element page (/N.html) ---------- */
+
+.element-page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding-top: 24px;
+  text-align: center;
+}
+
+.element-page .back {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: #555;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.element-page .back:hover { text-decoration: underline; }
+
+.element-head {
+  font-size: 52px;
+  font-weight: bold;
+  color: #000;
+}
+
+.element-name-en {
+  margin-top: 10px;
+  font-size: 26px;
+  color: #000;
+}
+
+.element-name-ru {
+  margin-top: 4px;
+  font-size: 20px;
+  color: #555;
+}
+
+/* ---------- Extra properties on the element page ---------- */
+
+.props {
+  margin-top: 22px;
+  line-height: 1.5;
+}
+
+.prop {
+  margin-top: 12px;
+  font-size: 16px;
+}
+
+.prop .k { color: #555; }
+.prop .v { font-weight: bold; color: #000; }
+
+.formula {
+  margin-top: 6px;
+  font-size: 18px;
+  color: #000;
+  word-break: break-word;
+}
+
+/* Superscripts a touch smaller so the formula stays tidy. */
+.formula sup,
+.prop sup { font-size: 0.65em; }
+
+/* Graphical formula of the outer level: labelled subshells, each a little
+   row of squares with up/down arrows. */
+.diagram {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+}
+
+.orb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.orb-label {
+  font-size: 14px;
+  color: #555;
+}
+
+.orb-boxes {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.box {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #333;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  letter-spacing: -1px;
+}

@@ -1,0 +1,91 @@
+WORK LOG — 2026-07-24 (session 2)
+Project: interactive periodic table (folder: chem)
+
+================================================================
+WHAT WAS DONE
+================================================================
+Task 2 implemented: clicking an element in the grid opens its own
+page at http://localhost:1429/<number>.html (e.g. 8 -> /8.html).
+At the top of that page: "N. Sym", then the element name in
+English, then in Russian (e.g. "8. O" / "Oxygen" / "Кислород").
+
+================================================================
+STORAGE DECISION (user asked: "SQLite?")
+================================================================
+Chose a local JSON file (elements.json), NOT SQLite.
+Reason: the dataset is 118 fixed, read-only rows. JSON is
+dependency-free (no npm install, no native module, no
+experimental node:sqlite flag), loads instantly, and is easy to
+edit by hand — it matches the project's minimal/local/fast rules.
+SQLite would add setup and moving parts for no benefit at this
+scale. If the data later grows or needs real querying/relations
+or writes from the app, we can migrate to SQLite then.
+
+================================================================
+DECISIONS
+================================================================
+1. Element pages are rendered DYNAMICALLY by server.js from
+   elements.json — not 118 separate static HTML files. Keeps the
+   file count low (project rule: "as few files as possible").
+2. elements.json is the SINGLE SOURCE OF TRUTH. Both the browser
+   grid and the server-side pages read it.
+3. Grid cells are now <a href="N.html"> links. The symbol->number
+   hover behaviour is unchanged.
+4. Each element page has a small "← Periodic table" back link.
+
+================================================================
+FILES CHANGED / ADDED
+================================================================
+- elements.json  (NEW) — 118 elements as
+                  { num, sym, col, row, en, ru }.
+- app.js         — now fetches elements.json and builds the grid
+                  as links (was: inline data + <div> cells).
+- server.js      — added: load elements.json; route /<number>.html
+                  -> rendered element page; serve .json type;
+                  404 for unknown numbers.
+- style.css      — added element-page styles; cells styled as
+                  links (no underline).
+- CLAUDE.md      — documented storage decision, Task 2 = DONE,
+                  new structure/routes.
+
+================================================================
+HOW IT WORKS
+================================================================
+- Grid: app.js fetch("elements.json") -> one <a> per element,
+  href = num + ".html", positioned via grid-column/grid-row.
+- Click -> browser navigates to /N.html.
+- server.js matches ^/(\d+)\.html$, looks up the element by number
+  in elements.json, and returns the page HTML. index.html and the
+  other static files are served normally.
+
+================================================================
+HOW TO RUN
+================================================================
+1. Open a terminal in the chem folder.
+2. Run:  node server.js
+3. Open: http://localhost:1429/index.html
+4. Hover an element to see its number; click it to open its page.
+
+================================================================
+WHAT WAS VERIFIED (automatically, at the end)
+================================================================
+- elements.json: exactly 118 elements, numbers 1..118 unique, all
+  fields present (num, sym, col, row, en, ru), positions valid,
+  no overlaps.
+- Server pages: /8.html -> "8. O" / Oxygen / Кислород;
+  /1.html -> Hydrogen / Водород; /118.html -> Oganesson / Оганесон.
+- Status codes: / , /index.html , /style.css , /app.js ,
+  /elements.json , /8.html -> 200; /999.html , /0.html ,
+  /nope.html -> 404.
+- Grid render (ran the real app.js with a fetch/DOM stub): 118
+  <a> cells, each linking to the correct N.html, symbol/number and
+  grid positions correct (oxygen -> href 8.html, "O"/"8", col 16
+  row 2).
+Everything works.
+
+================================================================
+NEXT
+================================================================
+Task 2 is closed. Element pages currently show number + symbol +
+names only; more properties can be added later as extra fields in
+elements.json. New tasks to be discussed in chat.

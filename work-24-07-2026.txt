@@ -1,0 +1,69 @@
+WORK LOG — 2026-07-24
+Project: interactive periodic table (folder: chem)
+
+================================================================
+WHAT WAS DONE
+================================================================
+Task 1 implemented: a periodic table where every element is a
+square with a letter (symbol) in the center. On mouse hover the
+symbol is replaced by the element's atomic number
+(e.g. O -> 8). Nothing else: no names, no colors.
+
+================================================================
+DECISIONS (all made autonomously, as requested)
+================================================================
+1. Stack: plain Vanilla JS + HTML + CSS. No frameworks, no build
+   step, no npm packages. Keeps it minimal and fast.
+2. Server: Node, built-in http module (server.js).
+   Run with a single command: node server.js — the way the user
+   is used to. No dependencies to install.
+3. Port: 1429 (3000 is already in use).
+4. Hover: the symbol is REPLACED by the number in the same square
+   (not a tooltip, not a corner badge) — as requested.
+5. Styling: only squares with a single centered letter.
+   No colors, no names added.
+
+================================================================
+FILES
+================================================================
+- server.js    — minimal Node server (dependency-free),
+                 serves the files on port 1429.
+- index.html   — page markup + empty #table container.
+- style.css    — 18-column CSS Grid, square cells, hover logic
+                 (hide the symbol, show the number).
+- app.js       — data for all 118 elements as
+                 [number, symbol, column, row] + cell rendering.
+                 Lanthanides (57-71) and actinides (89-103) are
+                 placed in the two bottom rows.
+- CLAUDE.md    — updated: stack, port, run, structure,
+                 Task 1 status = DONE.
+
+================================================================
+HOW TO RUN
+================================================================
+1. Open a terminal in the chem folder.
+2. Run:  node server.js
+3. Open in a browser:  http://localhost:1429/index.html
+4. Hover over any element — its atomic number appears.
+
+================================================================
+WHAT WAS VERIFIED (at the end, automatically)
+================================================================
+- Data: exactly 118 elements, all numbers 1..118 unique,
+  positions within grid bounds, no overlapping cells.
+- Spot checks: O = [8, column 16, row 2],
+  La in row 9, Og = [118, column 18, row 7].
+- Rendering (ran the real app.js): 118 cells created, each has
+  exactly one symbol and one number and grid positions set;
+  oxygen shows "O" by default and "8" on hover.
+- CSS: number hidden by default; on hover the symbol is hidden
+  and the number is shown.
+- Server: node server.js serves / , /style.css , /app.js with
+  HTTP 200 and correct content types; missing file -> 404.
+Everything works.
+
+================================================================
+NEXT
+================================================================
+Nothing pending — Task 1 is closed. New tasks will be discussed
+in chat and appended to CLAUDE.md.

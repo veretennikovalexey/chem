@@ -1,0 +1,118 @@
+WORK LOG — 2026-07-24 (session 3)
+Project: interactive periodic table (folder: chem)
+
+================================================================
+WHAT WAS DONE
+================================================================
+Extended elements.json with extra data and showed it on each
+element page (/N.html), keeping the page compact so it fits on
+one screen:
+  - group number as a Roman numeral (I..VIII);
+  - electron configuration ("электронная формула") with proper
+    superscripts;
+  - a quantum-cell diagram of the LAST (outermost) subshell:
+    squares with up/down arrows for the electrons.
+
+================================================================
+DATA MODEL (elements.json)
+================================================================
+Each element is now:
+  { num, sym, col, row, en, ru, group, conf }
+New fields:
+  - group : Roman numeral string. Derived from the column
+            (1->I, 2->II, ... 8/9/10->VIII, 11->I, ... 18->VIII);
+            lanthanides (57-71) and actinides (89-103) -> III.
+  - conf  : full electron configuration as a list of
+            [n, letter, count], e.g. oxygen =
+            [[1,"s",2],[2,"s",2],[2,"p",4]].
+
+================================================================
+HOW IT IS RENDERED (server.js)
+================================================================
+- Electron formula: conf mapped to "1s^2 2s^2 2p^4 ..." with
+  <sup> tags for the superscripts.
+- Orbital diagram: takes the LAST subshell of conf. Number of
+  boxes = orbitals in that subshell (s=1, p=3, d=5, f=7).
+  Electrons fill by Hund's rule: one up-arrow in each box first,
+  then pair with a down-arrow. Each box is a bordered square
+  containing "↑", "↑↓", or empty.
+- Labels are in Russian: Группа, Электронная формула,
+  Последняя орбиталь. Back link -> "← Таблица Менделеева".
+- Header size and paddings trimmed so the whole card fits on
+  screen; the long formula (heavy elements) wraps within a
+  680px column.
+
+================================================================
+DECISIONS
+================================================================
+1. Electron configurations use the idealized Klechkovsky/Aufbau
+   (Madelung) order. Known real ground-state exceptions
+   (Cr, Cu, Pd, Ag, Au, La, Ce, Gd, Pt, Ac, Th, U, ...) are NOT
+   applied yet, so e.g. Cr shows ...4s^2 3d^4 (the "rule" form,
+   not the real ...4s^1 3d^5). This is the standard school way of
+   writing the formula and keeps all 118 correct and consistent.
+   Real exceptions can be added later on request.
+2. The graphical diagram shows only the LAST subshell (the
+   differentiating electrons) — literal reading of "последней
+   внешней орбитали" and it stays compact. Can be expanded to the
+   full valence shell (e.g. 2s + 2p together) if wanted.
+3. Group uses the classic 8-group Roman system (matches the
+   examples I / V / VI in the task).
+
+================================================================
+FILES CHANGED
+================================================================
+- elements.json  — added group + conf to all 118 elements.
+- server.js      — element page now renders group, electron
+                   formula (superscripts) and the orbital box
+                   diagram; helper functions formulaHtml() and
+                   lastDiagram(); back link + labels in Russian.
+- style.css      — styles for .props / .formula / .boxes / .box;
+                   header/padding trimmed to fit on screen.
+- CLAUDE.md      — Task 3 documented; data model + decisions
+                   updated.
+
+================================================================
+HOW TO RUN
+================================================================
+1. Terminal in the chem folder.
+2. node server.js
+3. Open http://localhost:1429/index.html
+4. Click an element (e.g. oxygen -> /8.html) to see the group,
+   electron formula and the orbital diagram.
+
+================================================================
+WHAT WAS VERIFIED (automatically, at the end)
+================================================================
+- Data: for all 118 elements the conf electron counts sum to the
+  atomic number; every group is a valid Roman numeral I..VIII;
+  every subshell count is within its capacity.
+- Rendered pages (via the running server):
+    H  (1): group I,   1s^1,           last 1s^1 -> ↑
+    He (2): group VIII,1s^2,           last 1s^2 -> ↑↓
+    N  (7): group V,   ...2p^3,        last 2p^3 -> ↑ ↑ ↑
+    O  (8): group VI,  ...2p^4,        last 2p^4 -> ↑↓ ↑ ↑
+    Ne(10): group VIII,...2p^6,        last 2p^6 -> ↑↓ ↑↓ ↑↓
+    Fe(26): group VIII,...4s^2 3d^6,   last 3d^6 -> ↑↓ ↑ ↑ ↑ ↑
+    Og(118):group VIII,...7p^6,        last 7p^6 -> ↑↓ ↑↓ ↑↓
+  All correct (Hund's rule filling confirmed).
+
+================================================================
+NEXT
+================================================================
+Task 3 is closed. Possible follow-ups: real ground-state config
+exceptions; more properties (atomic mass, etc.). Discuss in chat.
+
+================================================================
+UPDATE (same day) — diagram now shows the whole outer level
+================================================================
+Per user feedback, the graphical formula was changed from drawing
+only the LAST subshell to drawing the whole OUTER (valence) level.
+Rule (server.js valenceSubshells): draw every subshell of the
+highest shell n (ns, np) PLUS a partially-filled (n-1)d and
+(n-2)f; a filled inner d10/f14 stays in the core and is not drawn.
+Each subshell is labelled (2s, 2p, ...) with its own boxes.
+Examples: C -> 2s[↑↓] 2p[↑][↑][ ]; O -> 2s[↑↓] 2p[↑↓][↑][↑];
+Fe -> 4s[↑↓] 3d[↑↓][↑][↑][↑][↑]; Kr -> 4s[↑↓] 4p[↑↓][↑↓][↑↓]
+(filled 3d hidden). Verified via the running server for
+C, N, O, Ne, Na, Ar, Fe, Kr, Gd, Og.
