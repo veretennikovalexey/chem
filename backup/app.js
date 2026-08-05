@@ -1,9 +1,8 @@
 // Interactive periodic table — front-end rendering.
 //
 // Data lives in elements.json (single source of truth), served locally.
-// Each element: { num, sym, col, row, en, ru, group, metal, conf }.
+// Each element: { num, sym, col, row, en, ru }.
 // Each cell is a link to /<num>.html; the symbol->number hover is pure CSS.
-// `metal` comes straight from the data so both tables tint the same elements.
 
 fetch("elements.json")
   .then((r) => r.json())
@@ -12,7 +11,7 @@ fetch("elements.json")
 
     for (const el of elements) {
       const cell = document.createElement("a");
-      cell.className = el.metal ? "cell metal" : "cell";
+      cell.className = "cell";
       cell.href = el.num + ".html";
       cell.style.gridColumn = el.col;
       cell.style.gridRow = el.row;

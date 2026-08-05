@@ -1,0 +1,149 @@
+WORK LOG — 2026-08-05
+Project: interactive periodic table (folder: chem)
+
+================================================================
+TASK (todo-05-08-2026.txt)
+================================================================
+Add a second page, short.html, with the same elements arranged in
+the SHORT form of the table. Show period numbers and group
+numbers. Check on the internet whether Roman numerals are used.
+
+================================================================
+RESEARCH — ARE ROMAN NUMERALS USED?
+================================================================
+Yes — for the short form they are the standard.
+  - The short (Mendeleev, 1871) form numbers its groups I..VIII in
+    ROMAN numerals, printed above the columns. Each group splits
+    into a главная (A) and a побочная (B) subgroup; the побочные
+    are the d-elements.
+  - The modern IUPAC scheme — Arabic 1..18 with no A/B — was
+    adopted in the late 1980s (first printed ~1990) and applies to
+    the LONG form. It exists precisely because the old Roman
+    "IA / VIIB" labels are ambiguous: in the CAS scheme VIIB is
+    manganese, in the old IUPAC scheme it is the halogens.
+So: long form (index.html) -> Arabic 1..18;
+    short form (short.html) -> Roman I..VIII + А/Б.
+Periods are always Arabic (1..7).
+Sources: ru.wikipedia "Короткая форма периодической системы
+элементов", ru.wikipedia "Группа периодической системы",
+en.wikipedia / wikidoc "Group (periodic table)".
+
+Alignment: sources describe two printed variants — (a) главные
+подгруппы aligned left, побочные right; (b) first row of a period
+left, second row right. Variant (a) was used, since it makes the
+subgroup readable at a glance.
+
+================================================================
+WHAT WAS DONE
+================================================================
+New page short.html + short.js. No change to elements.json —
+the short-form position is DERIVED from the long-form col/row:
+
+  period   : row 1..7; lanthanide row 9 -> period 6,
+             actinide row 10 -> period 7
+  ряд      : periods 1-3 take one row; big periods take two —
+             d-block half (col <= 10) first, p-block half
+             (col >= 11) second  => 11 rows total
+  group    : el.group (the Roman numeral added in task 3) is
+             already the 8-group number
+  subgroup : А (главная) for col 1-2 and 13-18 (s-/p-block),
+             Б (побочная) for col 3-12 (d-block)
+
+Layout (CSS grid in style.css):
+  - column 1 = period number; for big periods the label spans both
+    of its rows;
+  - 8 group columns; header shows the Roman numeral with small
+    А / Б labels underneath;
+  - inside a group А is flush left and Б flush right, so K/Cu,
+    Sc/Ga, Mn/Br sit on opposite sides;
+  - group VIII is wider (3 cells) for the triads Fe Co Ni,
+    Ru Rh Pd, Os Ir Pt, Hs Mt Ds;
+  - La (57) and Ac (89) stay in group III Б as "La*" / "Ac**";
+    58-71 and 90-103 are listed in two rows under the table.
+
+Behaviour is the same as the long form: symbol -> atomic number on
+hover, every cell is a link to /N.html. index.html and short.html
+link to each other.
+
+================================================================
+FILES CHANGED
+================================================================
+- short.html   NEW — markup: back link, #short grid, #series rows.
+- short.js     NEW — derives the short-form position and renders.
+- style.css    — .short / .ghead / .gnum / .gsub / .phead / .slot /
+                 .series* blocks; .table-link for the cross-links.
+- index.html   — link "Короткая форма (8 групп) →".
+- CLAUDE.md    — Task 4 documented (incl. the Roman-numeral finding).
+
+================================================================
+HOW TO RUN
+================================================================
+1. Terminal in the chem folder.
+2. node server.js
+3. http://localhost:1429/index.html  — long form
+   http://localhost:1429/short.html  — short form
+
+================================================================
+WHAT WAS VERIFIED
+================================================================
+short.js was executed against a small DOM shim in Node, and the
+resulting layout was checked:
+  - 118 elements placed exactly once — 90 in the grid, 28 in the
+    lanthanide/actinide rows (14 + 14); numbers cover 1..118;
+  - every cell links to N.html; every filled slot carries an
+    А or Б class;
+  - 8 group headers = Roman I..VIII, each with А and Б;
+  - 7 period labels, rows/spans 2,3,4 then 5/2, 7/2, 9/2, 11/2;
+  - the column an element lands in always matches el.group;
+  - only group VIII holds multiple elements — exactly 4 triads;
+  - La and Ac carry the * / ** markers.
+Spot-checks (ряд, group, subgroup):
+  H 1/IА, He 1/VIIIА, Li 2/IА, O 2/VIА, Cl 3/VIIА,
+  K 4/IА, Ca 4/IIА, Sc 4/IIIБ, Mn 4/VIIБ, Fe Co Ni 4/VIIIБ,
+  Cu 5/IБ, Zn 5/IIБ, Ga 5/IIIА, Br 5/VIIА, Kr 5/VIIIА,
+  Rb 6/IА, Pd 6/VIIIБ, Ag 7/IБ, I 7/VIIА, Xe 7/VIIIА,
+  Cs 8/IА, La* 8/IIIБ, W 8/VIБ, Pt 8/VIIIБ,
+  Au 9/IБ, Pb 9/IVА, Rn 9/VIIIА,
+  Fr 10/IА, Ac** 10/IIIБ, Rf 10/IVБ, Ds 10/VIIIБ,
+  Rg 11/IБ, Nh 11/IIIА, Ts 11/VIIА, Og 11/VIIIА.
+Server: /index.html, /short.html, /short.js, /style.css, /app.js,
+/elements.json, /8.html -> 200; /999.html -> 404.
+
+================================================================
+NOTE
+================================================================
+Classic printed short tables stop at 10 ряды (period 7 was
+incomplete). Period 7 is now full, so it takes two rows like
+periods 4-6 — 11 rows in total.
+
+================================================================
+UPDATE (same day) — uniform column spacing
+================================================================
+First version put each group in ONE wide column and aligned А left
+/ Б right inside it, so the distance between neighbouring symbols
+jumped around (IА -> IБ was not the same as IБ -> IIА), and the
+group VIII triads drifted.
+
+Rebuilt as ONE uniform lattice instead:
+  grid-template-columns: 40px repeat(17, 44px), gap 4px
+  - groups I..VII  -> 2 columns each (А then Б)
+  - group VIII     -> 3 columns (the triads); the noble gas sits
+                      in the first of the three
+  - column of an element = 2*group - 1 (А) or 2*group (Б);
+    group VIII = 15 + (col - 8)
+  - .slot wrappers dropped — every element is placed directly at
+    its own grid-column/grid-row, like app.js does in the long form
+  - header rows: row 1 = Roman numeral spanning its columns,
+    row 2 = А / Б over the exact columns they describe
+Now every column is 44px wide with the same 4px gap everywhere.
+
+Re-verified: no two elements share a cell, all 17 columns are
+used, А columns contain only главные подгруппы and Б columns only
+побочные, headers span the right columns, and the 118/1..118
+coverage still holds.
+
+================================================================
+NEXT
+================================================================
+Task 4 is closed. Possible follow-ups: show the А/Б subgroup on
+the element page; color the s-/p-/d-/f-blocks on both grids.
