@@ -27,7 +27,7 @@ Keep it updated as new tasks are agreed in chat.
 ## Data storage — local JSON, not SQLite
 
 - All element data lives in **`elements.json`** (one array, one object per element:
-  `{ num, sym, col, row, en, ru, group, metal, conf }`). This is the **single source of truth** — the
+  `{ num, sym, col, row, en, ru, group, metal, noble, conf }`). This is the **single source of truth** — the
   front-end grid and the server-rendered element pages both read it.
 - **Why JSON instead of SQLite:** the dataset is 118 fixed, read-only rows. A JSON
   file is dependency-free (no `npm install`, no native module, no experimental
@@ -56,7 +56,7 @@ node server.js
 chem/
 ├── CLAUDE.md        # this file — project info & plan
 ├── server.js        # Node server: static files + dynamic /N.html pages (port 1429)
-├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, metal, conf }
+├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, metal, noble, conf }
 ├── index.html       # long form (18 groups): markup + root grid container
 ├── app.js           # fetches elements.json, renders the long-form grid of links
 ├── short.html       # short form (8 groups): markup + grid + series containers
@@ -69,7 +69,8 @@ chem/
 - Dependency-free. No npm packages, no bundler, no CDN.
 - One responsibility per file: server (`server.js`) / data (`elements.json`) /
   markup (`index.html`) / style (`style.css`) / logic (`app.js`).
-- All 118 elements live in `elements.json` as `{ num, sym, col, row, en, ru, group, metal, conf }` —
+- All 118 elements live in `elements.json` as
+  `{ num, sym, col, row, en, ru, group, metal, noble, conf }` —
   the lanthanides (57–71) sit in grid row 9 and the actinides (89–103) in grid
   row 10 (row 8 is an empty spacer).
 - Prefer CSS for layout and the hover effect; use JS only for data + rendering.
@@ -176,6 +177,8 @@ short form → Roman I–VIII + А/Б.** Periods stay Arabic (1–7).
    triads Fe Co Ni / Ru Rh Pd / Os Ir Pt / Hs Mt Ds, with the noble gases in the
    first of the three. Column of an element = `2·group − 1` (А) or `2·group` (Б);
    group VIII = `15 + (col − 8)`.
+   **→ Superseded by Task 7:** group VIII is now **4** columns (18 in total) so the
+   triads sit in Б, not in the А column shared with the noble gases.
 3. **Lanthanides / actinides** — La (57) and Ac (89) stay in group III Б marked
    `La*` / `Ac**`; 58–71 and 90–103 are listed in two rows under the table.
 4. **Behaviour** — identical to the long form: symbol → atomic number on hover,
@@ -242,6 +245,64 @@ lanthanide/actinide series cells are tinted; the short grid still places 90 cell
 with no overlaps and every cell links to `N.html`; `conf` sums still equal Z for
 all 118 after the file was rewritten.
 
+## Task 7 — Triads moved into subgroup Б of group VIII (`short.html`) — ✅ DONE
+
+**Goal:** Fe, Ru, Os and Hs (and with them the whole triad) must sit in the
+**побочная подгруппа Б** of group VIII, not in the А column with the noble gases.
+
+**Research — who is right?** The user is. VIII А is the noble gases (p-elements,
+completed shell); VIII Б is the iron triad (Fe Co Ni) plus the two platinum triads
+(Ru Rh Pd, Os Ir Pt) and their 7th-period analogues Hs Mt Ds — d-elements, so
+побочная подгруппа. In the classic *printed* short table the group VIII box is 3
+cells wide, the triad fills it and the noble gas is printed flush left, i.e.
+visually under Fe — but that table prints no per-column А/Б captions; subgroup
+membership is shown by shifting the symbol left (главная) or right (побочная)
+inside the box. **This** table does print А/Б as column headers, so the old
+compromise stopped working: a column captioned «А» cannot contain iron. Widening
+group VIII also follows the classic "главные слева, побочные справа" rule more
+faithfully than the previous layout did.
+
+**How it was built:**
+
+1. **Group VIII is now 4 lattice columns** — one А column (15) for the noble gases,
+   then three Б columns (16–18) for the triad. The lattice went 17 → **18** columns
+   (`grid-template-columns: 40px repeat(18, 44px)` in `style.css`).
+2. **`short.js`** — `place()` now returns `VIII_A + 1 + (col − 8)` for the d-block
+   half of group VIII (`VIII_A = 15`); the noble gases keep column 15. The header
+   loop spans the Roman `VIII` over 4 columns and its `Б` caption over 3.
+3. **Nothing else changed** — periods, ряды, series rows, links and hover are
+   untouched, and the long form is not affected at all.
+
+**Verified:** DOM shim — 90 grid cells + 28 series = 118, no overlaps, all 18
+columns used, `VIII` header spans `16 / span 4`, its `Б` spans `17 / span 3`,
+А columns are exactly 2,4,6,8,10,12,14,16, and **every** element's column matches
+its subgroup (0 errors). Positions: Fe/Ru/Os/Hs → first Б column, Co/Rh/Ir/Mt →
+second, Ni/Pd/Pt/Ds → third; He Ne Ar Kr Xe Rn Og all in the А column. Server:
+`/short.html`, `/short.js`, `/26.html` → 200.
+
+## Task 8 — Noble gases tinted on both forms — ✅ DONE
+
+**Goal:** Give the inert gases their own quiet background color, stored and applied
+the same way as the metal tint.
+
+**How it was built:**
+
+1. **Flag in the data** — a new boolean `noble` in `elements.json` (10th field, right
+   after `metal`), true for He, Ne, Ar, Kr, Xe, Rn, Og. Same pattern as `metal`:
+   one source of truth, both renderers read it, the element pages can use it later.
+2. **Both renderers** — `app.js` and `short.js` now compose the class list:
+   `"cell" + (el.metal ? " metal" : "") + (el.noble ? " noble" : "")`.
+3. **Color** — `.cell.noble { background: #eaf1f8; }`, a faint cool blue — the cold
+   counterpart of the warm metal sand, so the two categories never read as the same
+   tint. Hover `#cfe0f0`, a shade deeper of the same tone.
+4. **No conflict with `metal`** — noble gases are non-metals, so no cell ever carries
+   both classes.
+
+**Verified:** 7 noble cells on each form (`He Ne Ar Kr Xe Rn Og`), 92 metals
+unchanged, **zero class mismatches element-by-element** between the long and the
+short form, no cell is both `metal` and `noble`, all 118 cells still link to
+`N.html`, and `conf` sums still equal Z for all 118 after the JSON was rewritten.
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server.js`), dependency-free — chosen over Python because
@@ -250,10 +311,16 @@ all 118 after the file was rewritten.
 - **Element pages:** rendered **dynamically** by `server.js` from `elements.json`
   (not 118 static HTML files) to keep the file count low.
 - **Storage:** local **JSON** (`elements.json`), not SQLite — see "Data storage".
-- **Scope:** grid cells show a single centered letter; the only category color is
-  the metal tint on the long form (Task 5).
+- **Scope:** grid cells show a single centered letter; the category colors are the
+  warm metal tint (Tasks 5–6) and the cool noble-gas tint (Task 8), both on both
+  forms.
 - **Metals:** metalloids (B, Si, Ge, As, Sb, Te, At) count as **non**-metals and stay
   white; Po is a metal. Ts and Og are treated as non-metals.
+- **Noble gases:** He Ne Ar Kr Xe Rn **and Og** (group by column 18, even though Og
+  is predicted to be reactive) — they get the cool tint, never the metal one.
+- **Group VIII of the short form:** 4 columns — А for the noble gases, three Б for
+  the triads (Task 7). The А/Б column captions are authoritative: no element may
+  stand in the column of the other subgroup.
 - **Electron config:** idealized Klechkovsky/Aufbau order (no real ground-state
   exceptions yet). The graphical formula shows the **outer valence level** — the
   highest-shell ns/np plus a partially-filled (n-1)d / (n-2)f; a filled inner
@@ -268,3 +335,5 @@ all 118 after the file was rewritten.
   as new fields in `elements.json`.
 - The short form could also show the А/Б subgroup on the element page, or mark the
   s-/p-/d-/f-block with color on both grids.
+- A small legend under the grids ("металлы / инертные газы") would make the two
+  tints self-explanatory; the element page could show the same tint in its header.

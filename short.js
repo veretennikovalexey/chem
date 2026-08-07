@@ -1,9 +1,11 @@
 // Short-form (Mendeleev, 8-group) periodic table — front-end rendering.
 //
 // Same data source as the long form: elements.json.
-// The table is one uniform grid: 17 equal columns of the same width and the
+// The table is one uniform grid: 18 equal columns of the same width and the
 // same gap, so every element sits in its own cell of an invisible lattice.
-//   groups I..VII -> 2 columns each (А | Б),  group VIII -> 3 (the triads)
+//   groups I..VII -> 2 columns each (А | Б)
+//   group VIII    -> 4: one А column for the noble gases, then three Б columns
+//                    for the triads (Fe Co Ni, Ru Rh Pd, Os Ir Pt, Hs Mt Ds)
 // The short-form position is derived from the long-form column/row:
 //   period  : row 1..7; the lanthanide row 9 -> period 6, actinide row 10 -> 7
 //   ряд     : small periods (1-3) take one row, big periods take two —
@@ -16,6 +18,7 @@
 // the tint is identical in the short and the long form — series rows included.
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
+const VIII_A = 15; // lattice column of the noble gases; the triads take 16..18
 const RYADS = 11; // 3 small periods + 4 big periods x 2
 const HEAD_ROWS = 2; // group numbers, then the А/Б labels
 
@@ -28,14 +31,14 @@ function place(el) {
   const per = el.row <= 7 ? el.row : el.row === 9 ? 6 : 7;
   const ryad = per <= 3 ? per : el.col <= 10 ? 2 * per - 4 : 2 * per - 3;
   const g = ROMAN.indexOf(el.group) + 1;
-  // Column of the invisible 17-column lattice.
-  // Group VIII is three columns wide: the noble gas takes the first, the
-  // triad (Fe Co Ni ...) spreads across all three.
+  // Column of the invisible 18-column lattice.
+  // Group VIII is four columns wide: the noble gas (главная) takes the first,
+  // the triad (Fe Co Ni ...) is d-block, so it sits in the three Б columns.
   const sub =
     g === 8
       ? isMain(el)
-        ? 15
-        : 15 + (el.col - 8)
+        ? VIII_A
+        : VIII_A + 1 + (el.col - 8)
       : isMain(el)
       ? 2 * g - 1
       : 2 * g;
@@ -44,7 +47,8 @@ function place(el) {
 
 function cellLink(el, mark) {
   const cell = document.createElement("a");
-  cell.className = el.metal ? "cell metal" : "cell";
+  cell.className =
+    "cell" + (el.metal ? " metal" : "") + (el.noble ? " noble" : "");
   cell.href = el.num + ".html";
   cell.title = el.ru;
 
@@ -79,10 +83,10 @@ fetch("elements.json")
     // ---- header: group number (Roman) over its columns, then А / Б ----
     ROMAN.forEach((roman, i) => {
       const g = i + 1;
-      const first = g === 8 ? 16 : 2 * g; // +1 for the period column
-      add(table, "ghead", roman, `${first} / span ${g === 8 ? 3 : 2}`, 1);
+      const first = 2 * g; // +1 for the period column
+      add(table, "ghead", roman, `${first} / span ${g === 8 ? 4 : 2}`, 1);
       add(table, "gsub", "А", first, 2);
-      add(table, "gsub", "Б", `${first + 1} / span ${g === 8 ? 2 : 1}`, 2);
+      add(table, "gsub", "Б", `${first + 1} / span ${g === 8 ? 3 : 1}`, 2);
     });
 
     // ---- period labels (one per period; big periods span two ряды) ----

@@ -37,12 +37,17 @@ body {
    without shouting. Non-metals and metalloids stay white. */
 .cell.metal { background: #fdf3e3; }
 
+/* Noble gases: a faint cool tint, the cold counterpart of the warm metal
+   sand — the group VIII А column reads at a glance without shouting. */
+.cell.noble { background: #eaf1f8; }
+
 /* Default: show the symbol. The atomic number is hidden. */
 .cell .num { display: none; }
 
 /* On hover: hide the symbol, show the atomic number in its place. */
 .cell:hover { background: #eeeeee; }
 .cell.metal:hover { background: #f4e4c6; }
+.cell.noble:hover { background: #cfe0f0; }
 .cell:hover .sym { display: none; }
 .cell:hover .num { display: inline; }
 
@@ -61,12 +66,13 @@ body {
 
 .table-link:hover { text-decoration: underline; }
 
-/* One uniform lattice: column 1 = period numbers, then 17 equal columns —
-   two per group (А | Б), three for group VIII (the triads). Every element
-   sits in its own cell, so the spacing is the same everywhere. */
+/* One uniform lattice: column 1 = period numbers, then 18 equal columns —
+   two per group (А | Б), four for group VIII (one А for the noble gases plus
+   three Б for the triads). Every element sits in its own cell, so the spacing
+   is the same everywhere. */
 .short {
   display: grid;
-  grid-template-columns: 40px repeat(17, 44px);
+  grid-template-columns: 40px repeat(18, 44px);
   grid-template-rows: 24px 16px repeat(11, 44px);
   gap: 4px;
   justify-content: center;
