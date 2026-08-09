@@ -27,7 +27,7 @@ Keep it updated as new tasks are agreed in chat.
 ## Data storage — local JSON, not SQLite
 
 - All element data lives in **`elements.json`** (one array, one object per element:
-  `{ num, sym, col, row, en, ru, group, metal, noble, conf }`). This is the **single source of truth** — the
+  `{ num, sym, col, row, en, ru, group, metal, noble, ar, conf }`). This is the **single source of truth** — the
   front-end grid and the server-rendered element pages both read it.
 - **Why JSON instead of SQLite:** the dataset is 118 fixed, read-only rows. A JSON
   file is dependency-free (no `npm install`, no native module, no experimental
@@ -56,7 +56,7 @@ node server.js
 chem/
 ├── CLAUDE.md        # this file — project info & plan
 ├── server.js        # Node server: static files + dynamic /N.html pages (port 1429)
-├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, metal, noble, conf }
+├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, metal, noble, ar, conf }
 ├── index.html       # long form (18 groups): markup + root grid container
 ├── app.js           # fetches elements.json, renders the long-form grid of links
 ├── short.html       # short form (8 groups): markup + grid + series containers
@@ -303,6 +303,45 @@ unchanged, **zero class mismatches element-by-element** between the long and the
 short form, no cell is both `metal` and `noble`, all 118 cells still link to
 `N.html`, and `conf` sums still equal Z for all 118 after the JSON was rewritten.
 
+## Task 9 — Relative atomic mass Ar on the element card — ✅ DONE
+
+**Goal:** Show the relative atomic mass **Ar** on every element page — rounded to a
+whole number for all elements (oxygen → 16), with **chlorine** the single exception
+at one decimal place (35.5).
+
+**How it was built:**
+
+1. **Data** — an 11th field `ar` in `elements.json`, inserted between `noble` and
+   `conf`: `{ num, sym, col, row, en, ru, group, metal, noble, ar, conf }`. It holds
+   the **exact IUPAC standard atomic weight** (abridged: H 1.0080, O 15.999,
+   Cl 35.45 …); for the elements with no stable isotope it is the mass number of
+   the most stable isotope (Tc 97, Pm 145, Po 209 … Og 294).
+2. **Rounding is a display rule, not stored data.** `server.js` gained
+   `formatAr(el)` with an `AR_DECIMALS = { 17: 1 }` table: everything renders via
+   `toFixed(0)`, chlorine via `toFixed(1)`. Keeping the true value in the JSON and
+   the rule in one function means the precision of any element can be changed by
+   one number, and the data stays honest.
+3. **Layout** — a new `.prop` row, «Относительная атомная масса A<sub>r</sub>», the
+   first line of the props block, above Группа. No new CSS beyond `.prop sub`
+   sharing the existing small-superscript size.
+
+**Source:** IUPAC standard atomic weights via Wikipedia, *List of chemical elements*
+(abridged values; `[ ]` entries = mass number of the most stable isotope).
+
+**Note on Dy:** dysprosium is exactly 162.50, the one halfway value in the table.
+It renders as **163** (round half up). If a textbook the user works from prints 162,
+this is the single line to change.
+
+**Verified:** all 118 elements have a numeric `ar`; `ar ≥ Z` and within a plausible
+range for every element; only chlorine renders with a decimal point, and it renders
+`35.5`; 36 hand-checked values against the reference table (H 1, O 16, Ar 40, K 39,
+Ca 40, Fe 56, Cu 64, Ag 108, Au 197, Pb 207, U 238, Og 294 …) all match. No
+regression after the JSON rewrite: 118 elements numbered 1–118, key order intact,
+`conf` sums still equal Z, 92 metals / 7 noble gases unchanged. Server: `/`,
+`/index.html`, `/short.html`, `/style.css`, `/app.js`, `/short.js`,
+`/elements.json`, `/8.html` → 200; `/999.html` → 404. Rendered cards spot-checked:
+H 1, O 16, Cl 35.5, Ar 40, Fe 56, Dy 163, Pb 207, Og 294.
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server.js`), dependency-free — chosen over Python because
@@ -321,6 +360,10 @@ short form, no cell is both `metal` and `noble`, all 118 cells still link to
 - **Group VIII of the short form:** 4 columns — А for the noble gases, three Б for
   the triads (Task 7). The А/Б column captions are authoritative: no element may
   stand in the column of the other subgroup.
+- **Atomic mass:** `elements.json` stores the **exact** IUPAC value; the rounding
+  (integers everywhere, one decimal for Cl) is a **render rule** in `server.js`.
+  Radioactive elements use the mass number of the most stable isotope. Dy 162.50
+  rounds **up** to 163.
 - **Electron config:** idealized Klechkovsky/Aufbau order (no real ground-state
   exceptions yet). The graphical formula shows the **outer valence level** — the
   highest-shell ns/np plus a partially-filled (n-1)d / (n-2)f; a filled inner
@@ -329,10 +372,12 @@ short form, no cell is both `metal` and `noble`, all 118 cells still link to
 ## Roadmap (future — not started)
 
 - Further tasks to be defined in chat. Update this file whenever a new task is agreed.
-- Element pages now show number, symbol, EN/RU names, group, electron formula and
-  the outer-level orbital diagram. Possible next steps: real ground-state config
-  exceptions, atomic mass / other properties, or category colors on the grid — all
-  as new fields in `elements.json`.
+- Element pages now show number, symbol, EN/RU names, Ar, group, electron formula
+  and the outer-level orbital diagram. Possible next steps: real ground-state config
+  exceptions, or further properties (density, melting point, electronegativity) —
+  all as new fields in `elements.json`.
+- Ar could also be printed in the grid cells themselves (a small number under the
+  symbol), the way a wall chart does it.
 - The short form could also show the А/Б subgroup on the element page, or mark the
   s-/p-/d-/f-block with color on both grids.
 - A small legend under the grids ("металлы / инертные газы") would make the two

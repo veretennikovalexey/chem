@@ -1,0 +1,121 @@
+WORK LOG — 2026-08-09
+Project: interactive periodic table (folder: chem)
+
+================================================================
+TASK (todo-09-08-2026.txt)
+================================================================
+Add the relative atomic mass Ar to every element card.
+Round it to a whole number for all elements (oxygen -> 16).
+Chlorine alone keeps one decimal place.
+
+================================================================
+DATA — WHERE THE NUMBERS COME FROM
+================================================================
+IUPAC standard atomic weights, abridged values, taken from
+Wikipedia "List of chemical elements" (the Atomic weight (Da)
+column). For the 38 elements with no stable isotope the table
+prints the value in square brackets — that is the mass number of
+the most stable isotope, and that is what was stored:
+  Tc 97, Pm 145, Po 209, At 210, Rn 222, Fr 223, Ra 226, Ac 227,
+  Np 237 ... Rf 267, Db 268, Sg 267, Bh 270, Hs 271, Mt 278,
+  Ds 281, Rg 282, Cn 285, Nh 286, Fl 289, Mc 290, Lv 293,
+  Ts 294, Og 294.
+Three of these differ from the values often quoted from memory
+(Tc is 97 not 98, Sg is 267 not 269, Hs is 271 not 269), which is
+why the table was fetched rather than typed from recollection.
+
+================================================================
+DESIGN DECISION — STORE EXACT, ROUND ON RENDER
+================================================================
+elements.json keeps the EXACT weight (H 1.0080, O 15.999,
+Cl 35.45, Fe 55.845). The rounding is a DISPLAY rule in server.js:
+
+  const AR_DECIMALS = { 17: 1 };
+  formatAr(el) -> el.ar.toFixed(AR_DECIMALS[el.num] || 0)
+
+Why not store "16" and "35.5" directly:
+  - the data file stays truthful — nothing is lost, and a later
+    task (molar mass, reaction arithmetic) can use the real value;
+  - the chlorine exception is one entry in one table instead of a
+    special case buried in 118 rows;
+  - giving any other element a decimal is a one-line change.
+This is the same pattern the project already uses for metal /
+noble: the fact lives in the JSON, the presentation in the code.
+
+================================================================
+WHAT WAS DONE
+================================================================
+1. elements.json — new field "ar", inserted between "noble" and
+   "conf", so the record is now
+   { num, sym, col, row, en, ru, group, metal, noble, ar, conf }.
+   All 118 rows filled; the one-line-per-element formatting of the
+   file is unchanged.
+2. server.js — added AR_DECIMALS + formatAr(), and a new props row
+   on the element page, printed FIRST, above Группа:
+   «Относительная атомная масса A(r): 16»
+3. style.css — one line: .prop sub joins .prop sup at 0.65em, so
+   the r in A(r) matches the existing superscript sizing. No other
+   styling was needed — the .prop / .k / .v rules already existed.
+
+Nothing else changed: both grids, the hover behaviour, the links,
+the tints and the electron formulas are untouched.
+
+================================================================
+FILES CHANGED
+================================================================
+- elements.json  — "ar" added to all 118 records.
+- server.js      — AR_DECIMALS, formatAr(), the new .prop row.
+- style.css      — .prop sub added to the small-script rule.
+- CLAUDE.md      — Task 9 documented; storage/decision/roadmap
+                   sections updated to the 11-field record.
+
+================================================================
+HOW TO RUN
+================================================================
+1. Terminal in the chem folder.
+2. node server.js
+3. http://localhost:1429/8.html   -> Ar 16
+   http://localhost:1429/17.html  -> Ar 35.5
+
+================================================================
+WHAT WAS VERIFIED
+================================================================
+Data (script over elements.json):
+  - 118 records, numbers 1..118, key order intact;
+  - every record has a numeric "ar";
+  - ar >= Z for every element and never more than 3x Z — catches a
+    digit slipped in or a value landing on the wrong row;
+  - only chlorine formats with a decimal point, and it formats
+    exactly "35.5";
+  - 36 values hand-checked against the reference table: H 1, He 4,
+    Li 7, Be 9, B 11, C 12, N 14, O 16, F 19, Ne 20, Na 23, Mg 24,
+    Al 27, Si 28, P 31, S 32, Cl 35.5, Ar 40, K 39, Ca 40, Fe 56,
+    Cu 64, Zn 65, Br 80, Ag 108, I 127, Ba 137, W 184, Pt 195,
+    Au 197, Hg 201, Pb 207, U 238, Ra 226, Og 294 — all match.
+No regression after the JSON was rewritten:
+  - conf sums still equal Z for all 118;
+  - 92 metals and 7 noble gases, unchanged.
+Rendered pages (server running, real HTTP):
+  - H 1, O 16, Cl 35.5, Ar 40, Fe 56, Dy 163, Pb 207, Og 294;
+  - /, /index.html, /short.html, /style.css, /app.js, /short.js,
+    /elements.json, /8.html -> 200;  /999.html -> 404.
+
+================================================================
+NOTE — ONE HALFWAY VALUE
+================================================================
+Dysprosium is exactly 162.50, the only element in the table that
+lands on a .5 and therefore the only one where "round to a whole
+number" is ambiguous. It is rendered as 163 (round half up, the
+rule taught in school). If the textbook in use prints 162, that is
+a single number to change in elements.json.
+Chlorine, 35.45, would have rounded to 35 — which is exactly why
+the task asks for one decimal there: 35.5 is the number every
+Russian school table prints, and the one that makes HCl = 36.5.
+
+================================================================
+NEXT
+================================================================
+Task 9 is closed. Natural follow-ups: print Ar in the grid cells
+themselves (small number under the symbol, like a wall chart), or
+add the next property column — density, melting point,
+electronegativity — as further fields in elements.json.

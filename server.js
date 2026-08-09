@@ -21,6 +21,17 @@ const ELEMENTS = JSON.parse(fs.readFileSync(path.join(ROOT, "elements.json"), "u
 const BY_NUM = {};
 for (const el of ELEMENTS) BY_NUM[el.num] = el;
 
+// Relative atomic mass as it is shown on the card. elements.json keeps the exact
+// IUPAC value; the rounding rule lives here:
+//   - every element is rounded to a whole number (O 15.999 -> 16);
+//   - chlorine alone keeps one decimal place (35.45 -> 35.5), the way school
+//     tables print it, because its two isotopes make the halfway value matter.
+const AR_DECIMALS = { 17: 1 };
+
+function formatAr(el) {
+  return el.ar.toFixed(AR_DECIMALS[el.num] || 0);
+}
+
 // Electron formula as text with superscripts: 1s² 2s² 2p⁴ ...
 function formulaHtml(conf) {
   return conf.map(([n, l, c]) => `${n}${l}<sup>${c}</sup>`).join(" ");
@@ -83,6 +94,8 @@ function renderElementPage(el) {
     <div class="element-name-ru">${el.ru}</div>
 
     <div class="props">
+      <div class="prop"><span class="k">Относительная атомная масса A<sub>r</sub>:</span> <span class="v">${formatAr(el)}</span></div>
+
       <div class="prop"><span class="k">Группа:</span> <span class="v">${el.group}</span></div>
 
       <div class="prop"><span class="k">Электронная формула:</span></div>

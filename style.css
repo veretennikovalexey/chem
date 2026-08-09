@@ -185,9 +185,10 @@ body {
   word-break: break-word;
 }
 
-/* Superscripts a touch smaller so the formula stays tidy. */
+/* Super-/subscripts a touch smaller so the formula and the Ar label stay tidy. */
 .formula sup,
-.prop sup { font-size: 0.65em; }
+.prop sup,
+.prop sub { font-size: 0.65em; }
 
 /* Graphical formula of the outer level: labelled subshells, each a little
    row of squares with up/down arrows. */
