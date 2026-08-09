@@ -1,3 +1,5 @@
+if exist "%~dp0.git\index.lock" del "%~dp0.git\index.lock"
+
 git pull
 
 git config --global user.name veretennikovalexey
