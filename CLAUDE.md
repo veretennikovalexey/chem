@@ -56,7 +56,7 @@ node server.js
 chem/
 ├── CLAUDE.md        # this file — project info & plan
 ├── server.js        # Node server: static files + dynamic /N.html pages (port 1429)
-├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, metal, noble, ar, conf }
+├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, metal, noble, dia, ar, conf }
 ├── index.html       # long form (18 groups): markup + root grid container
 ├── app.js           # fetches elements.json, renders the long-form grid of links
 ├── short.html       # short form (8 groups): markup + grid + series containers
@@ -342,6 +342,45 @@ regression after the JSON rewrite: 118 elements numbered 1–118, key order inta
 `/elements.json`, `/8.html` → 200; `/999.html` → 404. Rendered cards spot-checked:
 H 1, O 16, Cl 35.5, Ar 40, Fe 56, Dy 163, Pb 207, Og 294.
 
+## Task 10 — Molecular index ₂ for the diatomic elements — ✅ DONE
+
+**Goal:** In both tables the seven elements whose simple substance is a diatomic
+molecule — **H₂ N₂ O₂ F₂ Cl₂ Br₂ I₂** — show a subscript 2 to the lower right of
+the symbol instead of the bare letter, and the element card shows it too.
+
+**How it was built:**
+
+1. **Flag in the data** — a 10th field `dia` (boolean) in `elements.json`, between
+   `noble` and `ar`: `{ num, sym, col, row, en, ru, group, metal, noble, dia, ar,
+   conf }`. True for 1, 7, 8, 9, 17, 35, 53. Same pattern as `metal`/`noble`: three
+   consumers (long form, short form, element page) read one source of truth.
+2. **Both renderers** — `app.js` and `short.js` append a `<sub>2</sub>` node to the
+   `.sym` span when `el.dia`. In `short.js` this happens after the `*` / `**`
+   lanthanide marks, so `La*` is unaffected (no diatomic element carries a mark).
+3. **Element page** — `server.js` renders the header as `8. O<sub>2</sub>`; the
+   `<title>` uses the Unicode subscript (`8. O₂ — Oxygen`) since a tab title
+   cannot hold markup.
+4. **Styling** — `.cell .sym sub { font-size: 0.6em; line-height: 0; }` —
+   `line-height: 0` keeps the subscript out of the line box, so the symbol stays
+   vertically centred in the 44px square exactly as before. Card header:
+   `.element-head sub { font-size: 0.5em; }`.
+5. **Hover is untouched** — the subscript lives inside `.sym`, which `:hover` hides
+   in favour of `.num`, so hovering still shows the plain atomic number (`8`).
+
+**Scope note:** only the seven classic diatomics. Other elemental molecules (P₄,
+S₈, O₃) are *not* marked — if they are ever wanted, `dia` should become a number
+(atoms per molecule) instead of a boolean.
+
+**Verified:** `dia` is boolean on all 118 and true for exactly `H N O F Cl Br I`;
+key order and every other field intact (`conf` sums = Z, 92 metals, 7 noble gases,
+`ar` unchanged). DOM shim — both forms render 118 cells, **exactly 7** of them
+carry `<sub>2</sub>`, each of those is `Sym<sub>2</sub>` and nothing else, every
+cell's hover number still equals its `num`, the short grid still places 90 cells
+with no overlaps, `La*` intact. Server: `/`, `/index.html`, `/short.html`,
+`/style.css`, `/app.js`, `/short.js`, `/elements.json`, `/1.html`, `/8.html`,
+`/17.html`, `/26.html` → 200, `/999.html` → 404; headers render `1. H₂`, `7. N₂`,
+`8. O₂`, `9. F₂`, `17. Cl₂`, `35. Br₂`, `53. I₂`, while `He`, `Fe`, `Og` stay bare.
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server.js`), dependency-free — chosen over Python because
@@ -364,6 +403,10 @@ H 1, O 16, Cl 35.5, Ar 40, Fe 56, Dy 163, Pb 207, Og 294.
   (integers everywhere, one decimal for Cl) is a **render rule** in `server.js`.
   Radioactive elements use the mass number of the most stable isotope. Dy 162.50
   rounds **up** to 163.
+- **Diatomic index:** the seven classic diatomics (H N O F Cl Br I) print a
+  subscript 2 in both grids and in the card header; the flag `dia` lives in
+  `elements.json`. Hover still shows the bare atomic number. P₄/S₈/O₃ are out of
+  scope.
 - **Electron config:** idealized Klechkovsky/Aufbau order (no real ground-state
   exceptions yet). The graphical formula shows the **outer valence level** — the
   highest-shell ns/np plus a partially-filled (n-1)d / (n-2)f; a filled inner

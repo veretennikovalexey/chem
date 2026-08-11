@@ -83,13 +83,13 @@ function renderElementPage(el) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${el.num}. ${el.sym} — ${el.en}</title>
+  <title>${el.num}. ${el.sym}${el.dia ? "₂" : ""} — ${el.en}</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="element-page">
     <a class="back" href="index.html">← Таблица Менделеева</a>
-    <div class="element-head">${el.num}. ${el.sym}</div>
+    <div class="element-head">${el.num}. ${el.sym}${el.dia ? "<sub>2</sub>" : ""}</div>
     <div class="element-name-en">${el.en}</div>
     <div class="element-name-ru">${el.ru}</div>
 

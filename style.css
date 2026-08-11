@@ -44,6 +44,11 @@ body {
 /* Default: show the symbol. The atomic number is hidden. */
 .cell .num { display: none; }
 
+/* Diatomic simple substances (H₂ N₂ O₂ F₂ Cl₂ Br₂ I₂): a small index after the
+   symbol. line-height: 0 keeps it out of the line box, so the letter stays
+   vertically centred in the square exactly as before. */
+.cell .sym sub { font-size: 0.6em; line-height: 0; }
+
 /* On hover: hide the symbol, show the atomic number in its place. */
 .cell:hover { background: #eeeeee; }
 .cell.metal:hover { background: #f4e4c6; }
@@ -150,6 +155,9 @@ body {
   font-weight: bold;
   color: #000;
 }
+
+/* Molecular index in the card header: 8. O₂ */
+.element-head sub { font-size: 0.5em; }
 
 .element-name-en {
   margin-top: 10px;

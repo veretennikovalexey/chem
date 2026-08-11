@@ -22,6 +22,13 @@ fetch("elements.json")
       const sym = document.createElement("span");
       sym.className = "sym";
       sym.textContent = el.sym;
+      // Diatomic simple substances (H2 N2 O2 F2 Cl2 Br2 I2) carry their
+      // molecular subscript; the flag `dia` comes from elements.json.
+      if (el.dia) {
+        const sub = document.createElement("sub");
+        sub.textContent = "2";
+        sym.appendChild(sub);
+      }
 
       const num = document.createElement("span");
       num.className = "num";
