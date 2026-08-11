@@ -186,6 +186,11 @@ body {
 .prop .k { color: #555; }
 .prop .v { font-weight: bold; color: #000; }
 
+/* Oxidation states: the whole list is normal weight, only the characteristic
+   states are bold, so the eye picks them out of the row. */
+.prop .ox { color: #000; }
+.prop .ox b { font-weight: bold; }
+
 .formula {
   margin-top: 6px;
   font-size: 18px;

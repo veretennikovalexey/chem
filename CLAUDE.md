@@ -56,7 +56,7 @@ node server.js
 chem/
 ├── CLAUDE.md        # this file — project info & plan
 ├── server.js        # Node server: static files + dynamic /N.html pages (port 1429)
-├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, metal, noble, dia, ar, conf }
+├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
 ├── index.html       # long form (18 groups): markup + root grid container
 ├── app.js           # fetches elements.json, renders the long-form grid of links
 ├── short.html       # short form (8 groups): markup + grid + series containers
@@ -381,6 +381,64 @@ with no overlaps, `La*` intact. Server: `/`, `/index.html`, `/short.html`,
 `/17.html`, `/26.html` → 200, `/999.html` → 404; headers render `1. H₂`, `7. N₂`,
 `8. O₂`, `9. F₂`, `17. Cl₂`, `35. Br₂`, `53. I₂`, while `He`, `Fe`, `Og` stay bare.
 
+## Task 11 — Oxidation states on the element card — ✅ DONE
+
+**Goal:** Every element page shows its possible oxidation states, with the
+characteristic ones highlighted, plus a «высшая / низшая» line.
+
+**How it was built:**
+
+1. **Data — two arrays** in `elements.json`, right after `group`, so the key order
+   is now `{ num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar,
+   conf }`:
+   - `ox` — **every documented** oxidation state, ascending;
+   - `oxm` — the **characteristic** (stable, textbook) subset, always ⊆ `ox`.
+   **Zero is not stored**: every element has it, it distinguishes nothing. The
+   noble gases He, Ne, Ar have `ox: []` — they form no compounds.
+2. **Source.** `oxm` is based on the **PubChem periodic-table CSV**
+   (`OxidationStates` column, `https://pubchem.ncbi.nlm.nih.gov/rest/pug/periodictable/CSV`),
+   `ox` on the standard list of documented states (Wikipedia, *Oxidation state*).
+   Every state PubChem lists is checked to be present in `ox`.
+3. **Rendering** (`server.js`): `signed()` prints the sign with a typographic
+   minus (`−`, U+2212); `oxListHtml()` joins the list and wraps the characteristic
+   ones in `<b>`; `oxRangeHtml()` prints the range. CSS: `.prop .ox` is normal
+   weight so only the `<b>` states stand out.
+4. **The range is computed over `oxm`, not `ox`** — deliberately. Over all
+   documented states iron would claim «высшая +7» and copper «+4», and the school
+   rule *высшая = номер группы* would stop working. **Низшая = 0** when no
+   characteristic state is negative (metals — "простое вещество"). Oxygen and
+   fluorine have *only* a negative characteristic state, so they print a single
+   line «Характерная степень окисления: −2 / −1» instead of the same number twice.
+
+**Deliberate deviations from the PubChem column** (25 elements, all reviewed):
+
+- **N** — PubChem marks all eight states as common; textbooks call −3, +3, +5
+  characteristic. **Si** — +2 (SiO) is not characteristic. **Kr, Xe, Rn** —
+  PubChem gives only 0, but KrF₂, XeF₂/XeF₄/XeO₃ and RnF₂ exist. **Mo** — +4
+  alongside +6. **Ru** — +4 and +8 (RuO₄) alongside +3. **Pd** — +3 is rare, +2 is
+  the characteristic one. **Os** — +8 (OsO₄). **At** — behaves as a halogen: −1,
+  +1. **Br** — +7 added (perbromates, HBrO₄), so the highest state reaches the
+  group number VII.
+- **105–118** — PubChem publishes the whole *predicted* list there; `oxm` keeps
+  only the predicted most stable state (Db +5, Sg +6, Bh +7, Hs +8 …).
+
+**Caveats:** for the transactinides (104–118) every value is predicted, not
+measured, and relativistic effects break the "highest = group number" rule (Fl is
+credited with +6). Exotic records are kept in `ox` — Ir **+9** (the highest known
+oxidation state, IrO₄⁺) and B **−5**. Lithium is **+1** only: the −1 mentioned in
+chat is not part of the mainstream tables and was dropped.
+
+**Verified** (`outputs/ox/verify.py`): all 118 have `ox`/`oxm` sorted, unique,
+integer, zero-free, `oxm ⊆ ox`, `oxm` empty iff `ox` empty; every PubChem-listed
+state is present in `ox`; for main-group elements (rows 1–7, Z < 104) the highest
+state never exceeds the group number and the lowest never goes below *group − 8*;
+the difference set between `oxm` and PubChem is exactly the documented list above.
+Spot-checks: F `−1` only, O `−2 −1 +1 +2` with `−2` characteristic, He/Ne/Ar
+empty, Cl `−1 +1 +5 +7`, Mn `+2 +3 +4 +7`, Fe `+2 +3`, Ir up to +9, Xe up to +8.
+The «высшая ≠ номер группы» report lists only the expected exceptions
+(O, F, Kr, Xe, Rn, Po, At). Server: all **118** element pages → 200, `/999.html`
+→ 404, both grids still render 118 cells (no regression after the JSON rewrite).
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server.js`), dependency-free — chosen over Python because
@@ -403,6 +461,11 @@ with no overlaps, `La*` intact. Server: `/`, `/index.html`, `/short.html`,
   (integers everywhere, one decimal for Cl) is a **render rule** in `server.js`.
   Radioactive elements use the mass number of the most stable isotope. Dy 162.50
   rounds **up** to 163.
+- **Oxidation states:** `elements.json` stores all documented states (`ox`) and
+  the characteristic subset (`oxm`); **0 is never stored**. The card prints the
+  full list with the characteristic ones bold, and computes «высшая / низшая»
+  **from `oxm`** (низшая = 0 if none of them is negative). Source: PubChem for the
+  characteristic states, with a documented list of deviations in Task 11.
 - **Diatomic index:** the seven classic diatomics (H N O F Cl Br I) print a
   subscript 2 in both grids and in the card header; the flag `dia` lives in
   `elements.json`. Hover still shows the bare atomic number. P₄/S₈/O₃ are out of

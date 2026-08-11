@@ -32,6 +32,46 @@ function formatAr(el) {
   return el.ar.toFixed(AR_DECIMALS[el.num] || 0);
 }
 
+// Oxidation states. elements.json keeps every documented state in `ox`
+// (ascending, without 0 — every element has it) and the characteristic ones in
+// `oxm`; the sign and the bold face are added here.
+const MINUS = "−"; // typographic minus, not a hyphen
+
+function signed(v) {
+  return v < 0 ? MINUS + -v : "+" + v;
+}
+
+function oxListHtml(el) {
+  if (!el.ox.length) return "0 — соединений не образует";
+  const main = new Set(el.oxm);
+  return el.ox
+    .map((v) => (main.has(v) ? `<b>${signed(v)}</b>` : signed(v)))
+    .join(", ");
+}
+
+// Highest / lowest state — counted over the CHARACTERISTIC states (`oxm`), not
+// over every exotic one: otherwise iron would claim +7 and copper +4, and the
+// school rule "highest = group number" would stop working. Metals have no
+// negative characteristic state, so their lowest is 0 (the free element).
+function oxRangeHtml(el) {
+  if (!el.oxm.length) return "";
+  const lo = Math.min(...el.oxm);
+  // Oxygen and fluorine have no positive characteristic state at all, so a
+  // "highest / lowest" pair would print the same number twice.
+  if (Math.max(...el.oxm) < 0) {
+    return (
+      `<div class="prop"><span class="k">Характерная степень окисления:</span> ` +
+      `<span class="v">${signed(lo)}</span></div>`
+    );
+  }
+  return (
+    `<div class="prop"><span class="k">Высшая:</span> ` +
+    `<span class="v">${signed(Math.max(...el.oxm))}</span> · ` +
+    `<span class="k">низшая:</span> ` +
+    `<span class="v">${lo < 0 ? signed(lo) : "0"}</span></div>`
+  );
+}
+
 // Electron formula as text with superscripts: 1s² 2s² 2p⁴ ...
 function formulaHtml(conf) {
   return conf.map(([n, l, c]) => `${n}${l}<sup>${c}</sup>`).join(" ");
@@ -97,6 +137,9 @@ function renderElementPage(el) {
       <div class="prop"><span class="k">Относительная атомная масса A<sub>r</sub>:</span> <span class="v">${formatAr(el)}</span></div>
 
       <div class="prop"><span class="k">Группа:</span> <span class="v">${el.group}</span></div>
+
+      <div class="prop"><span class="k">Степени окисления:</span> <span class="ox">${oxListHtml(el)}</span></div>
+      ${oxRangeHtml(el)}
 
       <div class="prop"><span class="k">Электронная формула:</span></div>
       <div class="formula">${formulaHtml(el.conf)}</div>
