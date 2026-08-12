@@ -240,3 +240,107 @@ body {
   font-size: 15px;
   letter-spacing: -1px;
 }
+
+/* ---------- Solubility table (solubility_table.html) ---------- */
+
+.solub-page { text-align: center; }
+
+.solub-title {
+  margin: 6px 0 16px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #000;
+}
+
+/* One lattice: column 1 = the anion, then one column per cation.
+   grid-template-columns is set in JS from the data, so adding a cation to
+   solubility_table.json is enough — nothing here has to be counted again. */
+.solub {
+  display: grid;
+  grid-auto-rows: 34px;
+  gap: 3px;
+  justify-content: center;
+}
+
+.sol-head,
+.sol-side,
+.sol-corner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #000;
+  white-space: nowrap;
+}
+
+/* The anion column is wider and right-aligned, so the row reads as a label
+   followed by its values. */
+.sol-side {
+  justify-content: flex-end;
+  padding-right: 10px;
+  border-right: 1px solid #ccc;
+}
+
+.sol-head { border-bottom: 1px solid #ccc; }
+
+.sol-head sub,
+.sol-side sub,
+.sol-head sup,
+.sol-side sup { font-size: 0.7em; }
+
+.sol-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #333;
+  background: #fff;
+  font-size: 15px;
+  color: #000;
+  user-select: none;
+  cursor: default;
+}
+
+/* The four values keep the quiet tints of the periodic table: the colour is a
+   hint, the letter is the data. */
+.sol-cell.sol-p { background: #eef6ee; } /* растворимо */
+.sol-cell.sol-m { background: #fdf3e3; } /* малорастворимо — the warm sand */
+.sol-cell.sol-n { background: #fbeded; } /* нерастворимо */
+.sol-cell.sol-x { background: #f1f1f1; color: #888; } /* не существует */
+
+.solub .sol-cell:hover { outline: 2px solid #333; outline-offset: -2px; }
+
+/* ---------- Legend under the table ---------- */
+
+.solub-legend {
+  margin-top: 18px;
+  display: inline-block;
+  text-align: left;
+}
+
+.sol-leg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sol-leg .sol-cell {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  flex: none;
+}
+
+.sol-leg-text {
+  font-size: 14px;
+  color: #555;
+}
+
+.sol-cond {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #888;
+}
+
+/* Two links above a table (Менделеев ⇄ растворимость) need a gap between them. */
+.table-link + .table-link { margin-left: 18px; }

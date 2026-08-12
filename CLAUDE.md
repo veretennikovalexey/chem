@@ -59,14 +59,17 @@ be started from any working directory.
 ```
 chem/
 ├── data/
-│   └── elements.json    # the data store: 118 elements
-│                        # { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
+│   ├── elements.json    # 118 elements
+│   │                    # { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
+│   └── solubility_table.json  # solubility: cations[23], anions[14], grid[14] rows of Р/М/Н/—
 ├── public/              # everything the browser may load — the static root
 │   ├── index.html       # long form (18 groups): markup + root grid container
 │   ├── app.js           # fetches elements.json, renders the long-form grid of links
 │   ├── short.html       # short form (8 groups): markup + grid + series containers
 │   ├── short.js         # renders the short-form table from the same elements.json
-│   └── style.css        # both grids + hover styles + element-page styles
+│   ├── solubility_table.html  # solubility of acids, bases and salts in water
+│   ├── solubility_table.js    # renders it; builds every formula from the ion charges
+│   └── style.css        # both grids + solubility table + hover + element-page styles
 ├── server/
 │   └── server.js        # Node server: static files + dynamic /N.html pages (port 1429)
 ├── start.cmd            # launcher: node server\server.js
@@ -78,9 +81,10 @@ chem/
 └── backup/              # older flat copy of the app files
 ```
 
-**URLs are independent of this layout** — the browser still asks for
-`/index.html`, `/short.html`, `/style.css`, `/app.js`, `/short.js`,
-`/elements.json` and `/N.html`, exactly as before the split.
+**URLs are independent of this layout** — the browser asks for `/index.html`,
+`/short.html`, `/solubility_table.html`, `/style.css`, `/app.js`, `/short.js`,
+`/solubility_table.js`, `/N.html`, and for data by bare name
+(`/elements.json`, `/solubility_table.json`); nothing carries a folder prefix.
 
 ## Conventions
 
@@ -89,9 +93,13 @@ chem/
   (`public/`) / the code that serves it (`server/`); and one per file inside them:
   markup (`index.html`) / style (`style.css`) / logic (`app.js`).
 - **`data/` and `server/` are never reachable over HTTP.** Only `public/` is a
-  static root; `elements.json` is published through one explicit route.
-- A new browser-facing file goes in `public/`; a new data field goes in
-  `data/elements.json`. Nothing new belongs in the project root.
+  static root; the datasets in `data/` are published through one `.json` route.
+- A new browser-facing file goes in `public/`; a new element field goes in
+  `data/elements.json`, a new dataset in its own `data/*.json` (served
+  automatically). Nothing new belongs in the project root.
+- **Labels that can be computed are computed, not stored** — the Ar rounding
+  lives in `server.js`, the 322 solubility formulas in `solubility_table.js`.
+  Data and its captions must not be able to drift apart.
 - All 118 elements live in `data/elements.json` as
   `{ num, sym, col, row, en, ru, group, metal, noble, conf }` —
   the lanthanides (57–71) sit in grid row 9 and the actinides (89–103) in grid
@@ -511,6 +519,67 @@ Oganesson; `/1.html` → `1. H₂`; `/2.html` → «соединений не о
 `conf` sums = Z, 92 metals, 7 noble gases, 7 diatomics. `node --check` on the
 deployed file parses clean.
 
+## Task 13 — Таблица растворимости (`solubility_table.html`) — ✅ DONE
+
+**Goal:** A second table — the solubility of acids, bases and salts in water at
+standard conditions. Anions down the left (~14, OH⁻ … SiO₃²⁻), cations across the
+top (~23, H⁺ … Cu²⁺); the counts in the brief were approximate.
+
+**How it was built:**
+
+1. **Exactly 14 × 23**, because at those counts the rows land on the ends the
+   brief names. Cations: `H Li K Na NH₄ | Ba Ca Mg Sr | Al Cr Fe²⁺ Fe³⁺ | Mn Zn
+   Ni Co Cd Sn Pb | Ag Hg Cu` — iron appears twice, as two columns, because FeI₂
+   exists and FeI₃ does not. Anions: `OH F Cl Br I S SO₃ SO₄ NO₃ NO₂ PO₄ CO₃
+   CH₃COO SiO₃`.
+2. **Data** — a new file `data/solubility_table.json`: `cations[23]`,
+   `anions[14]` (`{sym, charge, poly, ru}`) and `grid[14]`, one **string** per
+   anion with one character per cation. A string, not 322 objects, so the whole
+   dataset fits on a screen and a row can be checked against a printed table by
+   eye. Values: **Р** растворимо (>1 g/100 g), **М** малорастворимо (0.1–1 g),
+   **Н** практически нерастворимо (<0.1 g), **—** не существует (hydrolysed by
+   water or never obtained). 179 Р / 18 М / 94 Н / 31 — , no empty cell.
+3. **No formula is stored.** All 322 are built in `solubility_table.js` from the
+   ion charges by lowest common multiple (Al³⁺ + SO₄²⁻ → Al₂(SO₄)₃, a polyatomic
+   ion parenthesised when its index exceeds 1). Same reason the Ar rounding lives
+   in `server.js` and not in the JSON: a computed label cannot drift from its
+   data. Two exceptions where the accepted spelling differs from the mechanical
+   one — H⁺ + OH⁻ is H₂O, and acetic acid is CH₃COOH. The formula shows in the
+   cell's tooltip together with the meaning: «BaSO₄ — практически нерастворимо».
+4. **The dash is a fact, not a gap.** Al₂S₃, Cr₂(CO₃)₃, Fe₂(CO₃)₃ and their kin
+   hydrolyse completely; AgOH turns into Ag₂O at once; CuI₂ and FeI₃ cannot exist
+   because iodide reduces Cu²⁺ and Fe³⁺. Those cells carry «—», never «Н» — the
+   distinction is on the syllabus.
+5. **One data route.** `server.js` no longer names `elements.json`: any request
+   ending in `.json` is looked up in `data/` by `path.basename`, so a new dataset
+   needs no new route and cannot address a file outside `data/`.
+6. **Colour** — Р faint green, М the same warm sand as the metals, Н faint pink,
+   «—» grey. The colour is a hint; the letter is the data, so the table survives
+   black-and-white printing. Both periodic tables link to the page and back.
+
+**On the sources:** no reference table could be extracted from the web — nearly
+all of them are images, and the machine-readable copies contradict each other
+(one marks NaOH as non-existent). The table was therefore built from solubility
+rules and reference solubilities; the judgement calls (LiOH Р, the whole fluoride
+row, the mercury and tin dashes, CuSO₃) are listed one by one in
+`work-12-08-2026-2.txt`. Each is one character in one `grid` row.
+
+**Verified:** `check-solubility.js` encodes the solubility rules *separately from
+the table*, so it cross-checks two independent statements rather than restating
+one. 14 rows × 23 chars, alphabet `РМН—` only, no repeated ion, ends match the
+brief; all 322 formulas electroneutral with integral, irreducible indices, 26
+checked character by character; alkali-metal and ammonium salts soluble except a
+named list (LiF, Li₃PO₄, Li₂CO₃, Li₂SiO₃, H₂SiO₃, (NH₄)₂SiO₃); every nitrate Р;
+every acetate Р but CH₃COOAg; AgCl/AgBr/AgI Н, PbCl₂/PbBr₂ М, PbI₂ Н;
+BaSO₄/SrSO₄/PbSO₄ Н, CaSO₄/Ag₂SO₄ М; no stray «Р» among the carbonates,
+phosphates, silicates or sulfites; the hydrolysis and non-existence cells all
+dashed; 10 syllabus landmarks (BaSO₄ and AgCl as the qualitative tests, CaCO₃,
+CuS, Ag₃PO₄, Cu(OH)₂, Fe(OH)₃, limewater) correct. In real Chromium: 322 cells,
+23 headers, 14 side labels, no overlaps, distribution identical to the JSON, a
+tooltip on every cell, 4 legend rows, 4 distinct backgrounds, links both ways,
+and no regression — `index.html` 118 cells, `short.html` 90, the oxygen card
+intact, no console errors.
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server\server.js`, via `start.cmd`), dependency-free —
@@ -520,9 +589,15 @@ deployed file parses clean.
   (not 118 static HTML files) to keep the file count low.
 - **Storage:** local **JSON** (`data/elements.json`), not SQLite — see "Data storage".
 - **Layout:** three folders — `data/` (source of truth), `public/` (the static
-  root, the only thing the browser may load), `server/` (the code). The data file
-  is **not** duplicated into `public/`; it is published through a single
-  `/elements.json` route (Task 12). URLs are unchanged by the split.
+  root, the only thing the browser may load), `server/` (the code). Data files are
+  **not** duplicated into `public/`; any `/*.json` request is served from `data/`
+  by basename (Tasks 12–13). URLs are unchanged by the split.
+- **Solubility table:** 23 cations × 14 anions, values Р / М / Н / **—**, where
+  the dash means «не существует» (full hydrolysis, or never obtained) and is a
+  deliberate answer, not a missing one. Fe²⁺ and Fe³⁺ are separate columns. The
+  grid is stored as 14 strings, one per anion; formulas are computed, never
+  stored. Judgement calls where sources disagree are listed in
+  `work-12-08-2026-2.txt`.
 - **Scope:** grid cells show a single centered letter; the category colors are the
   warm metal tint (Tasks 5–6) and the cool noble-gas tint (Task 8), both on both
   forms.
@@ -554,10 +629,10 @@ deployed file parses clean.
 ## Roadmap (future — not started)
 
 - Further tasks to be defined in chat. Update this file whenever a new task is agreed.
-- The old flat copies in the project root (`elements.json`, `index.html`,
-  `short.html`, `app.js`, `short.js`, `style.css`, `server.js`, and the stale
-  `node server.js.cmd`) are the user's to delete once he has switched to
-  `start.cmd` — see the list in `work-12-08-2026.txt`.
+- Solubility table follow-ups: highlight the whole row and column on hover (only
+  the cell is highlighted now); precipitate colours (CuS black, Ag₃PO₄ yellow,
+  Fe(OH)₃ brown) as another field in the data; a link from a cell to the cation's
+  element card; printing the table onto one A4 page.
 - Element pages now show number, symbol, EN/RU names, Ar, group, electron formula
   and the outer-level orbital diagram. Possible next steps: real ground-state config
   exceptions, or further properties (density, melting point, electronegativity) —

@@ -182,11 +182,14 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // The data file lives in data/, outside the static root, but the front-end
-  // asks for it as /elements.json — so it gets its own route. One copy of the
-  // data, one source of truth; app.js and short.js need no change.
-  if (urlPath === "/elements.json") {
-    fs.readFile(ELEMENTS_FILE, (err, data) => {
+  // The data files live in data/, outside the static root, but the front-end
+  // asks for them by bare name (/elements.json, /solubility_table.json) — so
+  // any .json is looked up in data/. One copy of every dataset, one source of
+  // truth; the pages need no path prefix and no change when data is added.
+  // path.basename strips any directory part, so this route cannot be used to
+  // read a file outside data/.
+  if (urlPath.endsWith(".json")) {
+    fs.readFile(path.join(DATA, path.basename(urlPath)), (err, data) => {
       if (err) {
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
         res.end("404 Not Found");

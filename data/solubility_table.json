@@ -1,0 +1,71 @@
+{
+  "title": "Растворимость кислот, оснований и солей в воде",
+  "conditions": "при стандартных условиях (20 °C)",
+
+  "legend": [
+    { "code": "Р", "name": "растворимо", "note": "больше 1 г на 100 г воды" },
+    { "code": "М", "name": "малорастворимо", "note": "от 0,1 до 1 г на 100 г воды" },
+    { "code": "Н", "name": "практически нерастворимо", "note": "меньше 0,1 г на 100 г воды" },
+    { "code": "—", "name": "не существует", "note": "разлагается водой или не получено" }
+  ],
+
+  "cations": [
+    { "sym": "H",   "charge": 1, "poly": false, "ru": "водород" },
+    { "sym": "Li",  "charge": 1, "poly": false, "ru": "литий" },
+    { "sym": "K",   "charge": 1, "poly": false, "ru": "калий" },
+    { "sym": "Na",  "charge": 1, "poly": false, "ru": "натрий" },
+    { "sym": "NH4", "charge": 1, "poly": true,  "ru": "аммоний" },
+    { "sym": "Ba",  "charge": 2, "poly": false, "ru": "барий" },
+    { "sym": "Ca",  "charge": 2, "poly": false, "ru": "кальций" },
+    { "sym": "Mg",  "charge": 2, "poly": false, "ru": "магний" },
+    { "sym": "Sr",  "charge": 2, "poly": false, "ru": "стронций" },
+    { "sym": "Al",  "charge": 3, "poly": false, "ru": "алюминий" },
+    { "sym": "Cr",  "charge": 3, "poly": false, "ru": "хром (III)" },
+    { "sym": "Fe",  "charge": 2, "poly": false, "ru": "железо (II)" },
+    { "sym": "Fe",  "charge": 3, "poly": false, "ru": "железо (III)" },
+    { "sym": "Mn",  "charge": 2, "poly": false, "ru": "марганец (II)" },
+    { "sym": "Zn",  "charge": 2, "poly": false, "ru": "цинк" },
+    { "sym": "Ni",  "charge": 2, "poly": false, "ru": "никель (II)" },
+    { "sym": "Co",  "charge": 2, "poly": false, "ru": "кобальт (II)" },
+    { "sym": "Cd",  "charge": 2, "poly": false, "ru": "кадмий" },
+    { "sym": "Sn",  "charge": 2, "poly": false, "ru": "олово (II)" },
+    { "sym": "Pb",  "charge": 2, "poly": false, "ru": "свинец (II)" },
+    { "sym": "Ag",  "charge": 1, "poly": false, "ru": "серебро" },
+    { "sym": "Hg",  "charge": 2, "poly": false, "ru": "ртуть (II)" },
+    { "sym": "Cu",  "charge": 2, "poly": false, "ru": "медь (II)" }
+  ],
+
+  "anions": [
+    { "sym": "OH",     "charge": -1, "poly": true,  "ru": "гидроксид",  "cls": "основание" },
+    { "sym": "F",      "charge": -1, "poly": false, "ru": "фторид",     "cls": "соль" },
+    { "sym": "Cl",     "charge": -1, "poly": false, "ru": "хлорид",     "cls": "соль" },
+    { "sym": "Br",     "charge": -1, "poly": false, "ru": "бромид",     "cls": "соль" },
+    { "sym": "I",      "charge": -1, "poly": false, "ru": "иодид",      "cls": "соль" },
+    { "sym": "S",      "charge": -2, "poly": false, "ru": "сульфид",    "cls": "соль" },
+    { "sym": "SO3",    "charge": -2, "poly": true,  "ru": "сульфит",    "cls": "соль" },
+    { "sym": "SO4",    "charge": -2, "poly": true,  "ru": "сульфат",    "cls": "соль" },
+    { "sym": "NO3",    "charge": -1, "poly": true,  "ru": "нитрат",     "cls": "соль" },
+    { "sym": "NO2",    "charge": -1, "poly": true,  "ru": "нитрит",     "cls": "соль" },
+    { "sym": "PO4",    "charge": -3, "poly": true,  "ru": "фосфат",     "cls": "соль" },
+    { "sym": "CO3",    "charge": -2, "poly": true,  "ru": "карбонат",   "cls": "соль" },
+    { "sym": "CH3COO", "charge": -1, "poly": true,  "ru": "ацетат",     "cls": "соль" },
+    { "sym": "SiO3",   "charge": -2, "poly": true,  "ru": "силикат",    "cls": "соль" }
+  ],
+
+  "grid": [
+    "РРРРРРМНМННННННННННН——Н",
+    "РМРРРМНННМММНРРРРРРМР—Р",
+    "РРРРРРРРРРРРРРРРРРРМНРР",
+    "РРРРРРРРРРРРРРРРРРРМНМР",
+    "РРРРРРРРРРРР—РРРРРРННН—",
+    "РРРРРРМ—Р——Н—НННННННННН",
+    "РРРРРННМН——Н—ННННН—НН——",
+    "РРРРРНМРНРРРРРРРРРРНМРР",
+    "РРРРРРРРРРРРРРРРРРРРРРР",
+    "РРРРРРРРР——Р—РРРРР—РМ—Р",
+    "РНРРРНННННННННННННННННН",
+    "РМРРРНННН——Н—ННННН—НН—Н",
+    "РРРРРРРРРРРРРРРРРРРРМРР",
+    "ННРР—НННН——Н—ННННН—НН—Н"
+  ]
+}
