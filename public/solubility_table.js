@@ -11,21 +11,30 @@
 // вещества собирается здесь из зарядов ионов, поэтому данные нельзя
 // рассинхронизировать с подписями.
 
+// В подписи иона встречаются ДВЕ разные цифры, и путать их нельзя:
+//   число атомов в группе — внизу: SO₄, NO₂, NH₄, CH₃COO
+//   заряд иона            — вверху: ²⁻, ³⁻, ⁺
+// Опаснее всего NO₂⁻ и NH₄⁺: если обе цифры набрать одинаково, «NO2-»
+// читается как заряд 2−, хотя двойка здесь — два атома кислорода, а заряд
+// у нитрит-иона единичный. Поэтому обе цифры берутся из юникода: у ₂ и ² в
+// шрифте разная высота по рисунку глифа, а не по сдвигу через CSS, и они не
+// сливаются даже вплотную. Разметка <sub>/<sup> тут не годится — при мелком
+// кегле оба индекса оказываются на одной высоте.
 const SUB = "₀₁₂₃₄₅₆₇₈₉";
+const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
 const MINUS = "−"; // типографский минус, как на карточке элемента
 
-// "SO4" -> "SO<sub>4</sub>";  цифры в формуле — это всегда индексы.
-const htmlSym = (s) => s.replace(/(\d+)/g, "<sub>$1</sub>");
-// "SO4" -> "SO₄" — для атрибута title, где разметка не работает.
+// "SO4" -> "SO₄";  цифры внутри формулы группы — это всегда число атомов.
 const textSym = (s) => s.replace(/\d/g, (d) => SUB[+d]);
 
-// Заряд иона над строкой: 2+, 3−, +, −
-function chargeHtml(q) {
-  const n = Math.abs(q) > 1 ? Math.abs(q) : "";
-  return `<sup>${n}${q > 0 ? "+" : MINUS}</sup>`;
+// Заряд: "²⁻", "³⁻", "⁺". Единицу не пишут — Cl⁻, а не Cl¹⁻.
+function chargeText(q) {
+  const n = Math.abs(q) > 1 ? SUP[Math.abs(q)] : "";
+  return n + (q > 0 ? "⁺" : "⁻");
 }
 
-const ionHtml = (ion) => htmlSym(ion.sym) + chargeHtml(ion.charge);
+// Готовая подпись иона, обычным текстом: SO₄²⁻, NO₂⁻, NH₄⁺, Fe³⁺.
+const ionText = (ion) => textSym(ion.sym) + chargeText(ion.charge);
 
 const gcd = (a, b) => (b ? gcd(b, a % b) : a);
 
@@ -47,10 +56,12 @@ function formula(cat, an) {
 
 const CLASS = { Р: "sol-p", М: "sol-m", Н: "sol-n", "—": "sol-x" };
 
-function cell(className, html, col, row, title) {
+// Ни одна подпись больше не содержит разметки — только текст, поэтому
+// textContent, а не innerHTML.
+function cell(className, text, col, row, title) {
   const div = document.createElement("div");
   div.className = className;
-  div.innerHTML = html;
+  div.textContent = text;
   div.style.gridColumn = col;
   div.style.gridRow = row;
   if (title) div.title = title;
@@ -70,13 +81,13 @@ fetch("solubility_table.json")
     // ---- шапка: катионы ----
     table.appendChild(cell("sol-corner", "", 1, 1, ""));
     cations.forEach((c, j) => {
-      table.appendChild(cell("sol-head", ionHtml(c), j + 2, 1, c.ru));
+      table.appendChild(cell("sol-head", ionText(c), j + 2, 1, c.ru));
     });
 
     // ---- строки: анион + 23 клетки ----
     anions.forEach((a, i) => {
       const row = i + 2;
-      table.appendChild(cell("sol-side", ionHtml(a), 1, row, a.ru));
+      table.appendChild(cell("sol-side", ionText(a), 1, row, `${a.ru}-ион`));
 
       const values = [...grid[i]];
       values.forEach((v, j) => {
@@ -91,11 +102,14 @@ fetch("solubility_table.json")
     legend.forEach((l) => {
       const item = document.createElement("div");
       item.className = "sol-leg";
-      item.innerHTML =
-        `<span class="sol-cell ${CLASS[l.code]}">${l.code}</span>` +
-        `<span class="sol-leg-text">— ${l.name}` +
-        (l.note ? `, ${l.note}` : "") +
-        `</span>`;
+      const mark = document.createElement("span");
+      mark.className = "sol-cell " + CLASS[l.code];
+      mark.textContent = l.code;
+      const text = document.createElement("span");
+      text.className = "sol-leg-text";
+      text.textContent = "— " + l.name + (l.note ? ", " + l.note : "");
+      item.appendChild(mark);
+      item.appendChild(text);
       box.appendChild(item);
     });
     const cond = document.createElement("div");
