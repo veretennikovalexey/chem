@@ -1,0 +1,163 @@
+WORK LOG — 2026-08-12
+Project: interactive periodic table (folder: chem)
+
+================================================================
+TASK (todo)
+================================================================
+Create the folders data / public / server and copy all the
+necessary files into them. Do not delete anything — the server is
+running and in use. Hand over a list of the files to delete
+instead.
+
+================================================================
+THE CONSTRAINT THAT SHAPED EVERYTHING
+================================================================
+The server is running right now. So nothing at the root was
+moved, edited or deleted: the three folders were built ALONGSIDE
+the flat layout, from copies. The running server keeps reading the
+root files and never notices. Both trees are complete and working
+at the same time; the switch happens when you stop the old server
+and start start.cmd.
+
+================================================================
+WHAT WENT WHERE
+================================================================
+  data/    elements.json
+  public/  index.html  short.html  app.js  short.js  style.css
+  server/  server.js
+  start.cmd  (new, in the root)
+
+The rule for the split: data/ is the source of truth, public/ is
+everything the browser is allowed to load, server/ is the code
+that serves it. Nothing else moved — CLAUDE.md, chemistry_lessons.md,
+the todo-* / work-* logs, chem.url, ppl.cmd and backup/ stay in the
+root, untouched.
+
+================================================================
+WHY A PLAIN COPY WAS NOT ENOUGH
+================================================================
+server.js resolved everything from __dirname. Copied into server/
+as-is it would look for elements.json and index.html inside
+server/ and fail on the first request. Three changes, nothing else
+touched:
+
+1. ROOT is gone, replaced by two anchors relative to the file
+   itself, so the server can be started from any folder:
+     PUBLIC = path.join(__dirname, "..", "public")
+     DATA   = path.join(__dirname, "..", "data")
+2. Static files are served from PUBLIC, and the traversal guard is
+   now path.resolve + startsWith(PUBLIC + path.sep) instead of the
+   old string test against ROOT. The old test would also have
+   accepted a sibling folder whose name merely starts with the
+   same text (public-old); the new one compares real resolved
+   paths, so a request can never climb out of public/ into data/
+   or server/.
+3. A route for /elements.json.
+
+Point 3 is the one real design decision. app.js and short.js both
+do fetch("elements.json"), but the file now lives in data/, which
+is deliberately outside the static root. The two options were to
+keep a second copy in public/, or to serve the one in data/ from a
+named route. The second wins: CLAUDE.md's "Data storage" rule says
+elements.json is the single source of truth, and two copies of it
+is exactly the bug that rule exists to prevent. It also cost less —
+four lines in server.js, and app.js / short.js stay byte-identical
+to what they were.
+
+The URLs did not change at all: /index.html, /short.html,
+/style.css, /app.js, /short.js, /elements.json, /N.html. Port is
+still 1429, so chem.url still works.
+
+================================================================
+FILES CHANGED
+================================================================
+- data/, public/, server/ — new folders, copies of the 7 app files
+- server/server.js  — PUBLIC/DATA anchors, tightened guard,
+                      /elements.json route (the ONLY copied file
+                      that differs from its original)
+- start.cmd         — new launcher: node "%~dp0server\server.js"
+- CLAUDE.md         — Task 12; Project structure and Run commands
+                      rewritten for the new layout
+Nothing in the root was modified or deleted.
+
+================================================================
+HOW TO RUN
+================================================================
+Double-click start.cmd (or: node server\server.js).
+Then http://localhost:1429/index.html — chem.url still points at it.
+
+================================================================
+WHAT WAS VERIFIED
+================================================================
+The new tree was assembled and run in a sandbox first, on a real
+HTTP server, so that nothing had to be tested against the running
+server on port 1429. Every check passed:
+
+Copies
+  - data/elements.json, public/index.html, public/short.html,
+    public/app.js, public/short.js, public/style.css are BYTE-
+    IDENTICAL to their root originals (cmp);
+  - server/server.js is the only one that differs, as intended.
+
+Serving (server started from an unrelated working directory, to
+prove the ../data and ../public anchors do not depend on cwd)
+  - /, /index.html, /short.html, /style.css, /app.js, /short.js,
+    /elements.json -> 200;
+  - all 118 element pages -> 200;
+  - /999.html, /0.html, /119.html, /nope.html -> 404.
+
+Isolation of data/ and server/
+  - /../server/server.js, /..%2fserver%2fserver.js,
+    /../data/elements.json, /..%2f..%2fetc%2fpasswd,
+    /server/server.js, /data/elements.json, /../start.cmd
+    are all refused; the server source is never served;
+  - the guard was re-run under Windows path rules (path.win32)
+    as well, including backslash forms like /..\server\server.js:
+    no request resolves outside public/.
+
+Content unchanged
+  - /8.html  -> "8. O2" / Oxygen / Кислород / Ar 16, links style.css
+  - /17.html -> Ar 35.5 · /26.html -> Железо · /118.html -> Oganesson
+  - /1.html  -> "1. H2" · /2.html -> "соединений не образует"
+  - the JSON served at /elements.json is byte-identical to
+    data/elements.json: 118 records numbered 1..118, conf sums = Z,
+    92 metals, 7 noble gases, 7 diatomics, ar numeric on all.
+
+After the copy landed on disk: node --check on the deployed
+server/server.js parses clean.
+
+================================================================
+FILES TO DELETE (after you switch over)
+================================================================
+Order: stop the running server FIRST, then delete, then
+start.cmd. Deleting while it runs does no damage, but the old
+server would keep serving the old files from memory and you would
+be looking at a table that no longer matches the folder.
+
+In the root, delete these 8:
+  elements.json      (now data/elements.json)
+  index.html         (now public/index.html)
+  short.html         (now public/short.html)
+  app.js             (now public/app.js)
+  short.js           (now public/short.js)
+  style.css          (now public/style.css)
+  server.js          (now server/server.js — repointed)
+  node server.js.cmd (replaced by start.cmd)
+
+KEEP: start.cmd, chem.url, ppl.cmd, CLAUDE.md,
+chemistry_lessons.md, every todo* and work-*.txt, backup/, .git/
+— and of course data/, public/, server/.
+
+Note: ppl.cmd does git add . — if you run it before deleting, the
+commit will contain both the old and the new copies. Harmless, but
+it is tidier to delete first and commit once.
+
+================================================================
+NEXT
+================================================================
+Task 12 is closed. The layout now has an obvious home for the next
+thing: new data fields go in data/elements.json, a new page goes in
+public/, and if server.js ever outgrows one file, server/ is
+already a folder. The property ideas from Task 9 (density, melting
+point, electronegativity) and Ar printed inside the grid cells are
+still open.

@@ -1,13 +1,23 @@
 // Minimal dependency-free static server + dynamic element pages.
-// Run:  node server.js
+// Run:  node server\server.js   (or double-click start.cmd in the project root)
 // Open: http://localhost:1429/index.html
+//
+// The project is split in three folders; this file resolves both of the others
+// relative to itself, so the server can be started from any working directory:
+//   data/    elements.json — the single source of truth
+//   public/  what the browser may load: index.html, short.html, app.js,
+//            short.js, style.css
+//   server/  this file
+// The URLs are unchanged by the split: /index.html, /short.html, /style.css,
+// /app.js, /short.js, /elements.json, /N.html.
 
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
 const PORT = 1429;
-const ROOT = __dirname;
+const PUBLIC = path.join(__dirname, "..", "public"); // static root
+const DATA = path.join(__dirname, "..", "data"); // never served as a folder
 
 const TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -17,7 +27,8 @@ const TYPES = {
 };
 
 // Local data store, keyed by atomic number.
-const ELEMENTS = JSON.parse(fs.readFileSync(path.join(ROOT, "elements.json"), "utf8"));
+const ELEMENTS_FILE = path.join(DATA, "elements.json");
+const ELEMENTS = JSON.parse(fs.readFileSync(ELEMENTS_FILE, "utf8"));
 const BY_NUM = {};
 for (const el of ELEMENTS) BY_NUM[el.num] = el;
 
@@ -171,9 +182,27 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Static files (index.html, style.css, app.js, elements.json).
-  const filePath = path.join(ROOT, path.normalize(urlPath));
-  if (!filePath.startsWith(ROOT)) {
+  // The data file lives in data/, outside the static root, but the front-end
+  // asks for it as /elements.json — so it gets its own route. One copy of the
+  // data, one source of truth; app.js and short.js need no change.
+  if (urlPath === "/elements.json") {
+    fs.readFile(ELEMENTS_FILE, (err, data) => {
+      if (err) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("404 Not Found");
+        return;
+      }
+      res.writeHead(200, { "Content-Type": TYPES[".json"] });
+      res.end(data);
+    });
+    return;
+  }
+
+  // Static files from public/ (index.html, short.html, style.css, app.js,
+  // short.js). path.resolve collapses any ".." before the check, so a request
+  // can never climb out of public/ into data/ or server/.
+  const filePath = path.resolve(PUBLIC, "." + path.posix.normalize(urlPath));
+  if (filePath !== PUBLIC && !filePath.startsWith(PUBLIC + path.sep)) {
     res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("403 Forbidden");
     return;

@@ -1,0 +1,242 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------- Periodic table grid ---------- */
+
+/* 18-column periodic-table grid. Each cell is a fixed square. */
+.table {
+  display: grid;
+  grid-template-columns: repeat(18, 44px);
+  grid-auto-rows: 44px;
+  gap: 4px;
+}
+
+/* Cells are links now, but look the same. */
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #333;
+  background: #fff;
+  font-size: 16px;
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Metals get a faint warm tint so the metal / non-metal split is readable
+   without shouting. Non-metals and metalloids stay white. */
+.cell.metal { background: #fdf3e3; }
+
+/* Noble gases: a faint cool tint, the cold counterpart of the warm metal
+   sand — the group VIII А column reads at a glance without shouting. */
+.cell.noble { background: #eaf1f8; }
+
+/* Default: show the symbol. The atomic number is hidden. */
+.cell .num { display: none; }
+
+/* Diatomic simple substances (H₂ N₂ O₂ F₂ Cl₂ Br₂ I₂): a small index after the
+   symbol. line-height: 0 keeps it out of the line box, so the letter stays
+   vertically centred in the square exactly as before. */
+.cell .sym sub { font-size: 0.6em; line-height: 0; }
+
+/* On hover: hide the symbol, show the atomic number in its place. */
+.cell:hover { background: #eeeeee; }
+.cell.metal:hover { background: #f4e4c6; }
+.cell.noble:hover { background: #cfe0f0; }
+.cell:hover .sym { display: none; }
+.cell:hover .num { display: inline; }
+
+/* ---------- Short form (short.html) ---------- */
+
+.short-page { text-align: center; }
+
+/* A link that leads from one table to the other. */
+.table-link {
+  display: inline-block;
+  margin-bottom: 14px;
+  color: #555;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.table-link:hover { text-decoration: underline; }
+
+/* One uniform lattice: column 1 = period numbers, then 18 equal columns —
+   two per group (А | Б), four for group VIII (one А for the noble gases plus
+   three Б for the triads). Every element sits in its own cell, so the spacing
+   is the same everywhere. */
+.short {
+  display: grid;
+  grid-template-columns: 40px repeat(18, 44px);
+  grid-template-rows: 24px 16px repeat(11, 44px);
+  gap: 4px;
+  justify-content: center;
+}
+
+.short .ghead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: bold;
+  color: #000;
+}
+
+.short .gsub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #888;
+}
+
+.short .phead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: bold;
+  color: #000;
+  border-right: 1px solid #ccc;
+}
+
+.series .cell { width: 44px; height: 44px; }
+
+/* Lanthanides / actinides, listed under the table. */
+.series { margin-top: 10px; }
+
+.series-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  justify-content: center;
+}
+
+.series-label {
+  width: 120px;
+  text-align: right;
+  padding-right: 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+/* ---------- Single element page (/N.html) ---------- */
+
+.element-page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding-top: 24px;
+  text-align: center;
+}
+
+.element-page .back {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: #555;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.element-page .back:hover { text-decoration: underline; }
+
+.element-head {
+  font-size: 52px;
+  font-weight: bold;
+  color: #000;
+}
+
+/* Molecular index in the card header: 8. O₂ */
+.element-head sub { font-size: 0.5em; }
+
+.element-name-en {
+  margin-top: 10px;
+  font-size: 26px;
+  color: #000;
+}
+
+.element-name-ru {
+  margin-top: 4px;
+  font-size: 20px;
+  color: #555;
+}
+
+/* ---------- Extra properties on the element page ---------- */
+
+.props {
+  margin-top: 22px;
+  line-height: 1.5;
+}
+
+.prop {
+  margin-top: 12px;
+  font-size: 16px;
+}
+
+.prop .k { color: #555; }
+.prop .v { font-weight: bold; color: #000; }
+
+/* Oxidation states: the whole list is normal weight, only the characteristic
+   states are bold, so the eye picks them out of the row. */
+.prop .ox { color: #000; }
+.prop .ox b { font-weight: bold; }
+
+.formula {
+  margin-top: 6px;
+  font-size: 18px;
+  color: #000;
+  word-break: break-word;
+}
+
+/* Super-/subscripts a touch smaller so the formula and the Ar label stay tidy. */
+.formula sup,
+.prop sup,
+.prop sub { font-size: 0.65em; }
+
+/* Graphical formula of the outer level: labelled subshells, each a little
+   row of squares with up/down arrows. */
+.diagram {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+}
+
+.orb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.orb-label {
+  font-size: 14px;
+  color: #555;
+}
+
+.orb-boxes {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.box {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #333;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  letter-spacing: -1px;
+}

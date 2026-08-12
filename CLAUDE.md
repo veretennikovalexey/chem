@@ -15,10 +15,11 @@ Keep it updated as new tasks are agreed in chat.
 ## Tech stack (chosen)
 
 - **Frontend:** Vanilla JavaScript + HTML + CSS. No frameworks, no bundler, no npm.
-- **Serving / backend:** Node.js built-in `http` module (`server.js`). No external
-  packages, no `npm install` — just `node server.js`. Serves the static files on
-  port 1429 and renders the per-element pages on the fly.
-- **Data store:** a plain local JSON file (`elements.json`) — see "Data storage".
+- **Serving / backend:** Node.js built-in `http` module (`server/server.js`). No
+  external packages, no `npm install` — just `node server\server.js`, or
+  `start.cmd`. Serves `public/` on port 1429 and renders the per-element pages on
+  the fly.
+- **Data store:** a plain local JSON file (`data/elements.json`) — see "Data storage".
 - **Why:** A framework or heavy backend would add code and slow things down, which
   breaks the "minimal / fast" requirement. The user is comfortable running
   `node server.js`, and Node's built-in `http` server needs zero dependencies while
@@ -26,7 +27,7 @@ Keep it updated as new tasks are agreed in chat.
 
 ## Data storage — local JSON, not SQLite
 
-- All element data lives in **`elements.json`** (one array, one object per element:
+- All element data lives in **`data/elements.json`** (one array, one object per element:
   `{ num, sym, col, row, en, ru, group, metal, noble, ar, conf }`). This is the **single source of truth** — the
   front-end grid and the server-rendered element pages both read it.
 - **Why JSON instead of SQLite:** the dataset is 118 fixed, read-only rows. A JSON
@@ -46,30 +47,52 @@ Keep it updated as new tasks are agreed in chat.
 
 ```bash
 # from the project root (the chem/ folder)
-node server.js
+start.cmd          # or, the same thing:  node server\server.js
 # then open http://localhost:1429/index.html in the browser
 ```
+
+The server resolves `../data` and `../public` relative to its own file, so it can
+be started from any working directory.
 
 ## Project structure
 
 ```
 chem/
-├── CLAUDE.md        # this file — project info & plan
-├── server.js        # Node server: static files + dynamic /N.html pages (port 1429)
-├── elements.json    # local data store: 118 elements { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
-├── index.html       # long form (18 groups): markup + root grid container
-├── app.js           # fetches elements.json, renders the long-form grid of links
-├── short.html       # short form (8 groups): markup + grid + series containers
-├── short.js         # renders the short-form table from the same elements.json
-└── style.css        # both grids + hover styles + element-page styles
+├── data/
+│   └── elements.json    # the data store: 118 elements
+│                        # { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
+├── public/              # everything the browser may load — the static root
+│   ├── index.html       # long form (18 groups): markup + root grid container
+│   ├── app.js           # fetches elements.json, renders the long-form grid of links
+│   ├── short.html       # short form (8 groups): markup + grid + series containers
+│   ├── short.js         # renders the short-form table from the same elements.json
+│   └── style.css        # both grids + hover styles + element-page styles
+├── server/
+│   └── server.js        # Node server: static files + dynamic /N.html pages (port 1429)
+├── start.cmd            # launcher: node server\server.js
+├── CLAUDE.md            # this file — project info & plan
+├── chemistry_lessons.md
+├── chem.url             # shortcut to http://localhost:1429/index.html
+├── ppl.cmd              # git add/commit/push helper
+├── todo, todo-*.txt, work-*.txt   # task briefs and work logs
+└── backup/              # older flat copy of the app files
 ```
+
+**URLs are independent of this layout** — the browser still asks for
+`/index.html`, `/short.html`, `/style.css`, `/app.js`, `/short.js`,
+`/elements.json` and `/N.html`, exactly as before the split.
 
 ## Conventions
 
 - Dependency-free. No npm packages, no bundler, no CDN.
-- One responsibility per file: server (`server.js`) / data (`elements.json`) /
+- One responsibility per folder: data (`data/`) / everything the browser may load
+  (`public/`) / the code that serves it (`server/`); and one per file inside them:
   markup (`index.html`) / style (`style.css`) / logic (`app.js`).
-- All 118 elements live in `elements.json` as
+- **`data/` and `server/` are never reachable over HTTP.** Only `public/` is a
+  static root; `elements.json` is published through one explicit route.
+- A new browser-facing file goes in `public/`; a new data field goes in
+  `data/elements.json`. Nothing new belongs in the project root.
+- All 118 elements live in `data/elements.json` as
   `{ num, sym, col, row, en, ru, group, metal, noble, conf }` —
   the lanthanides (57–71) sit in grid row 9 and the actinides (89–103) in grid
   row 10 (row 8 is an empty spacer).
@@ -439,14 +462,67 @@ The «высшая ≠ номер группы» report lists only the expected 
 (O, F, Kr, Xe, Rn, Po, At). Server: all **118** element pages → 200, `/999.html`
 → 404, both grids still render 118 cells (no regression after the JSON rewrite).
 
+## Task 12 — Three-folder layout: `data/` · `public/` · `server/` — ✅ DONE
+
+**Goal:** Split the flat project into three folders — `data`, `public`, `server` —
+by **copying**, never moving: the user's server was running while the work was
+done, so no file in the root could be touched. The old flat layout and the new
+tree therefore both exist and both work; the user removes the old copies himself
+from a delivered list.
+
+**How it was built:**
+
+1. **Copies only.** `elements.json` → `data/`; `index.html`, `short.html`,
+   `app.js`, `short.js`, `style.css` → `public/`; `server.js` → `server/`. The six
+   front-end/data copies are **byte-identical** to their originals.
+2. **`server/server.js` repointed** — the only copied file that differs.
+   `ROOT = __dirname` became two anchors relative to the file itself,
+   `PUBLIC = ../public` and `DATA = ../data`, so the server no longer depends on
+   the working directory it is started from. The static handler serves from
+   `PUBLIC`, and the traversal guard became `path.resolve` +
+   `startsWith(PUBLIC + path.sep)` — the old `startsWith(ROOT)` string test would
+   also have accepted a sibling folder like `public-old`.
+3. **One route for `/elements.json`.** `app.js` and `short.js` both
+   `fetch("elements.json")`, but the file now sits in `data/`, outside the static
+   root. Rather than keep a second copy inside `public/` — which is exactly what
+   the "single source of truth" rule in *Data storage* exists to prevent — the
+   server publishes the `data/` file through one named route. Four lines, and both
+   front-end files stayed untouched.
+4. **`start.cmd`** in the root runs `node "%~dp0server\server.js"`. Port stays
+   1429, so `chem.url` still works, and every URL is unchanged.
+
+**Deliberately left in the root:** `CLAUDE.md`, `chemistry_lessons.md`, the
+`todo*` / `work-*.txt` logs, `chem.url`, `ppl.cmd` and `backup/`.
+
+**Verified:** the tree was assembled and run in a sandbox first, so nothing had to
+be tested against the live server on 1429. Six copies byte-identical to their
+originals (`cmp`), `server/server.js` the only difference. Server started from an
+unrelated cwd: `/`, `/index.html`, `/short.html`, `/style.css`, `/app.js`,
+`/short.js`, `/elements.json` → 200; **all 118** element pages → 200;
+`/999.html`, `/0.html`, `/119.html`, `/nope.html` → 404. `data/` and `server/`
+unreachable: `/../server/server.js`, `/..%2fserver%2fserver.js`,
+`/../data/elements.json`, `/..%2f..%2fetc%2fpasswd`, `/server/server.js`,
+`/data/elements.json`, `/../start.cmd` all refused, server source never served;
+the guard was re-checked under `path.win32` rules including `/..\server\server.js`
+— nothing resolves outside `public/`. Content unchanged: `/8.html` → `8. O₂` /
+Oxygen / Кислород / Ar 16; `/17.html` → 35.5; `/26.html` → Железо; `/118.html` →
+Oganesson; `/1.html` → `1. H₂`; `/2.html` → «соединений не образует». The JSON at
+`/elements.json` is byte-identical to `data/elements.json`: 118 records 1–118,
+`conf` sums = Z, 92 metals, 7 noble gases, 7 diatomics. `node --check` on the
+deployed file parses clean.
+
 ## Decisions (resolved in chat)
 
-- **Server:** Node (`node server.js`), dependency-free — chosen over Python because
-  the user already runs servers that way.
+- **Server:** Node (`node server\server.js`, via `start.cmd`), dependency-free —
+  chosen over Python because the user already runs servers that way.
 - **Hover:** the symbol is **replaced** by the atomic number (not a badge/tooltip).
 - **Element pages:** rendered **dynamically** by `server.js` from `elements.json`
   (not 118 static HTML files) to keep the file count low.
-- **Storage:** local **JSON** (`elements.json`), not SQLite — see "Data storage".
+- **Storage:** local **JSON** (`data/elements.json`), not SQLite — see "Data storage".
+- **Layout:** three folders — `data/` (source of truth), `public/` (the static
+  root, the only thing the browser may load), `server/` (the code). The data file
+  is **not** duplicated into `public/`; it is published through a single
+  `/elements.json` route (Task 12). URLs are unchanged by the split.
 - **Scope:** grid cells show a single centered letter; the category colors are the
   warm metal tint (Tasks 5–6) and the cool noble-gas tint (Task 8), both on both
   forms.
@@ -478,6 +554,10 @@ The «высшая ≠ номер группы» report lists only the expected 
 ## Roadmap (future — not started)
 
 - Further tasks to be defined in chat. Update this file whenever a new task is agreed.
+- The old flat copies in the project root (`elements.json`, `index.html`,
+  `short.html`, `app.js`, `short.js`, `style.css`, `server.js`, and the stale
+  `node server.js.cmd`) are the user's to delete once he has switched to
+  `start.cmd` — see the list in `work-12-08-2026.txt`.
 - Element pages now show number, symbol, EN/RU names, Ar, group, electron formula
   and the outer-level orbital diagram. Possible next steps: real ground-state config
   exceptions, or further properties (density, melting point, electronegativity) —
