@@ -190,20 +190,32 @@ const COMPOUNDS = JSON.parse(fs.readFileSync(path.join(DATA, "compounds.json"), 
 const LEGEND = {};
 for (const l of SOLUB.legend) LEGEND[l.code] = l;
 
+// Russian name of the substance. Salts and bases follow one rule — the anion in
+// the nominative plus the cation in the genitive: «хлорид магния», «гидроксид
+// железа (III)» — so 308 of the 322 names are built from `ru` on the anion and
+// `ru2` on the cation instead of being written out one by one. The acids (the
+// whole H⁺ column) do not follow it — «серная кислота», not «сульфат
+// водорода» — and those 14 are the whole of compounds.json.
+// Стored lowercase, because that is how the words are spelt inside a sentence;
+// the capital letter is a render rule, like the Ar rounding.
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function compoundName(cat, an, ascii) {
+  const exception = COMPOUNDS[ascii];
+  if (exception) return cap(exception);
+  return cap(`${an.ru} ${cat.ru2}`);
+}
+
 // slug -> everything a page needs, built once from the table itself, so every
-// cell has a page and no page exists without a cell. compounds.json adds only
-// what cannot be computed: the Russian name and the description.
+// cell has a page and no page exists without a cell.
 const BY_SLUG = {};
 SOLUB.anions.forEach((an, i) => {
   [...SOLUB.grid[i]].forEach((value, j) => {
     const cat = SOLUB.cations[j];
     const ascii = F.formulaAscii(cat, an);
-    BY_SLUG[F.slug(ascii)] = { cat, an, value, ascii, text: COMPOUNDS[ascii] || null };
+    BY_SLUG[F.slug(ascii)] = { cat, an, value, ascii, name: compoundName(cat, an, ascii) };
   });
 });
-
-const FILLED = Object.keys(COMPOUNDS).filter((k) => k[0] !== "_").length;
-const TOTAL = Object.keys(BY_SLUG).length;
 
 // Molar mass, computed the same way Ar is: elements.json keeps the exact IUPAC
 // values, the rounding is a render rule and lives here. M(MgCl₂) = 95 г/моль.
@@ -237,30 +249,21 @@ function renderCompoundPage(c) {
   const exists = c.value !== "—";
   const legend = LEGEND[c.value];
   const m = exists ? molarMass(c.ascii) : null;
-
-  const name = c.text
-    ? `<div class="element-name-en">${esc(c.text.ru)}</div>`
-    : "";
-
-  const about = c.text
-    ? `<p class="about">${esc(c.text.about)}</p>`
-    : `<p class="about about-empty">Название и описание этого вещества пока не добавлены: ` +
-      `в таблице растворимости заполнено ${FILLED} страниц из ${TOTAL}. Всё остальное на ` +
-      `этой странице посчитано по формуле и по таблице, поэтому верно уже сейчас.</p>`;
+  const name = esc(c.name);
 
   return `<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${c.text ? esc(c.text.ru) + " " : ""}${shown}</title>
+  <title>${name} ${shown}</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="element-page">
     <a class="back" href="solubility_table.html">← Таблица растворимости</a>
     <div class="element-head">${shown}</div>
-    ${name}
+    <div class="element-name-en">${name}</div>
 
     <div class="props">
       <div class="prop"><span class="k">Класс:</span> <span class="v">${substanceClass(c.cat, c.an)}</span></div>
@@ -276,8 +279,6 @@ function renderCompoundPage(c) {
 
       <div class="prop"><span class="k">Ионы:</span> <span class="ox">${ionHtml(c.cat)} и ${ionHtml(c.an)}</span></div>
     </div>
-
-    ${about}
   </main>
 </body>
 </html>

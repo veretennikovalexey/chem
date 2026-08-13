@@ -62,7 +62,9 @@ chem/
 │   ├── elements.json    # 118 elements
 │   │                    # { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
 │   ├── solubility_table.json  # solubility: cations[23], anions[14], grid[14] rows of Р/М/Н/—
-│   └── compounds.json   # substance pages: formula -> { ru, about }; 5 of 322 filled
+│   │                    # ions carry ru (nominative) and, for cations, ru2 (genitive)
+│   └── compounds.json   # the 14 names that the naming rule cannot produce:
+│                        # the acids, formula -> name
 ├── public/              # everything the browser may load — the static root
 │   ├── index.html       # long form (18 groups): markup + root grid container
 │   ├── app.js           # fetches elements.json, renders the long-form grid of links
@@ -606,7 +608,11 @@ count cannot silently move up.
 substance. The address is the formula — `MgCl2` → `MgCl2.html`; lowercase is
 fine, and a bracket becomes a dash if it cannot be used in an address. The page
 carries the Russian name and the formula with a **Unicode** subscript
-(«Хлорид магния MgCl₂»). **Only 5 pages** are filled in for now, not all 322.
+(«Хлорид магния MgCl₂»).
+
+*First round:* only 5 pages were filled in. *Same-day revision, on the user's
+word:* **drop the description entirely, and give every one of the 322 its
+name** — see "Naming" below.
 
 **How it was built:**
 
@@ -630,11 +636,21 @@ carries the Russian name and the formula with a **Unicode** subscript
 3. **Every cell is a link** — the brief says «любой квадратик», so all 322,
    including the «—» cells: «не существует» is an answer, not a gap (Task 13),
    and the page says so. The legend swatches stay plain `<div>`s.
-4. **`data/compounds.json`** holds only what cannot be computed: the Russian
-   name and a description, keyed by the plain-text formula. **5 of 322 are
-   filled**; the other 317 open a page that shows everything computable and says
-   plainly that the name and the description are not written yet. The count
-   («заполнено 5 страниц из 322») is counted at startup, not typed in.
+4. **Naming — a rule, not 322 strings.** A Russian salt or base is named
+   *anion in the nominative + cation in the genitive*: «хлорид магния»,
+   «гидроксид железа (III)». So the cations gained one field, `ru2` (the
+   genitive), and **308 of the 322 names are built** from `an.ru + " " + cat.ru2`
+   — 22 words of data instead of 308 strings, and a name can never disagree with
+   the ion it belongs to. The Roman numeral is part of `ru2` because the data
+   already decided (in `ru`) which cations carry one.
+   The **acids break the rule** — H₂SO₄ is «серная кислота», not «сульфат
+   водорода» — so the whole H⁺ column, 14 names, is written out in
+   `data/compounds.json`, keyed by formula. `H2O` → «вода» sits there too: it is
+   the H⁺/OH⁻ cell, and no rule would produce that word.
+   Names are stored **lowercase**, the way they are spelt inside a sentence; the
+   capital letter is a render rule, like the Ar rounding.
+   A substance that does not exist is still named — «карбонат алюминия» — and
+   the page then says it does not exist.
 5. **The rest of the card is computed**, in the spirit of the Ar rounding:
    class of substance from the pair of ions (H⁺ + OH⁻ → оксид, H⁺ → кислота,
    OH⁻ → основание, otherwise соль), the solubility and its wording from
@@ -647,34 +663,41 @@ carries the Russian name and the formula with a **Unicode** subscript
    formula: «Хлорид магния MgCl₂».
 7. **No new page template** — the substance card reuses the element card's CSS
    (`.element-page`, `.element-head`, `.element-name-en`, `.props`); only the
-   description paragraph and the ion links are new.
+   ion links are new. The card is: formula, name, class, solubility, molar mass,
+   ions. **No description** — the user asked for it to go, and every line left
+   on the card is either data or computed from it.
 
-**The 5 chosen** (the brief said any five): they were picked to exercise every
-mechanism once, so the shape is proven before 317 names are written —
-**MgCl₂** the user's own example (plain salt), **Al₂(SO₄)₃** brackets and two
-indices → the dash rule, **H₂O** the special-cased formula *and* the proof that
-the name has to be stored rather than derived from the ions («Вода», not
-«гидроксид водорода»), **NaOH** a base rather than a salt, **BaSO₄** the
-insoluble qualitative-test landmark.
+**Verified:** two independent checkers against the live server, 217 checks in
+all, plus a real Chromium run.
 
-**Verified:** an independent checker (the formula, slug and molar-mass rules
-written a second time, in Python, against the live server) — 322 cells, 322
-distinct formulas and 322 distinct addresses, alphabet `[a-z0-9-]`, none all
-digits, none clashing with `index`/`short`/`style`/`app`/`solubility_table`;
-**all 322 pages → 200**, `/nope.html`, `/0.html`, `/999.html`, `/mgcl3.html` →
-404; every key of `compounds.json` corresponds to a real cell; each of the 5
-pages carries the right title, the Unicode formula, the name, the description,
-the class, the solubility wording taken from the table, the molar mass and the
-ion links; `/MgCl2.html`, `/Al2(SO4)3.html`, `/BASO4.html` return the canonical
-page byte for byte; 12 molar masses hand-checked (H₂O 18, NaOH 40, MgCl₂ 95,
-BaSO₄ 233, Al₂(SO₄)₃ 342, CaCO₃ 100, KNO₃ 101, AgCl 143, CH₃COOH 60,
-(NH₄)₂SO₄ 132, Ca₃(PO₄)₂ 310, Fe₂(SO₄)₃ 400). In real Chromium: 322 cells all
-`<a>`, no overlaps, the table unchanged (23 headers, 14 side labels, 4 colours,
-tooltips, H⁺…Cu²⁺ and OH⁻…SiO₃²⁻); a real mouse click on the MgCl₂ square opens
-`mgcl2.html`; the ion link opens the magnesium card; back returns 322 cells; a
-«—» cell shows «не существует» and no molar mass; no regression — 118 cells on
-the long form, 90 on the short, the oxygen card and chlorine's 35.5 intact, no
-console errors and no failed requests.
+*Structure (94):* 322 cells, 322 distinct formulas and 322 distinct addresses,
+alphabet `[a-z0-9-]`, none all digits, none clashing with
+`index`/`short`/`style`/`app`/`solubility_table`; **all 322 pages → 200**,
+`/nope.html`, `/0.html`, `/999.html`, `/mgcl3.html` → 404; on **all 322** the
+class, the solubility wording, the molar mass (absent exactly where the
+substance does not exist), the ion links and the back link are right;
+`/MgCl2.html`, `/Al2(SO4)3.html`, `/BASO4.html` return the canonical page byte
+for byte; 12 molar masses hand-checked (H₂O 18, NaOH 40, MgCl₂ 95, BaSO₄ 233,
+Al₂(SO₄)₃ 342, CaCO₃ 100, KNO₃ 101, AgCl 143, CH₃COOH 60, (NH₄)₂SO₄ 132,
+Ca₃(PO₄)₂ 310, Fe₂(SO₄)₃ 400).
+
+*Names (73):* the 22 genitive forms and the 14 acid names were **written out a
+second time inside the checker**, so the table and the check are two
+independent statements — a typo in either shows as a mismatch. All 322 pages
+carry a name, all 322 match the independently derived one, every `<title>` is
+«Name Formula», 22 bases and 286 salts counted, all 14 `compounds.json` keys are
+exactly the H⁺ column, no `<sub>` markup and no description left anywhere,
+25 names spot-checked by hand (Хлорид железа (II)/(III), Гидроксид марганца
+(II), Сульфат меди (II), Ацетат натрия, Серная кислота, Хлороводородная кислота
+(соляная), Карбонат алюминия …).
+
+*Chromium (50):* 322 cells all `<a>`, no overlaps, the table unchanged (23
+headers, 14 side labels, 4 colours, tooltips, H⁺…Cu²⁺ and OH⁻…SiO₃²⁻); a real
+mouse click on the MgCl₂ square opens `mgcl2.html`; the ion link opens the
+magnesium card; back returns 322 cells; a «—» cell shows «не существует», keeps
+its name and shows no molar mass; no regression — 118 cells on the long form,
+90 on the short, the oxygen card and chlorine's 35.5 intact, no console errors
+and no failed requests.
 
 ## Decisions (resolved in chat)
 
@@ -697,11 +720,12 @@ console errors and no failed requests.
 - **Substance pages:** one page per cell of the solubility table, addressed by
   the formula — lowercase, every bracket a dash (`Al2(SO4)3` → `al2-so4-3.html`);
   all 322 addresses are distinct and the server accepts any spelling of them.
-  Formula, class, solubility, molar mass and the ion links are **computed**;
-  `data/compounds.json` stores only the Russian name and the description, and
-  holds **5 of 322** for now — the rest open a page that says so rather than a
-  404. The formula code that both the browser and the server need lives once, in
-  `public/formula.js`.
+  Formula, class, solubility, molar mass and the ion links are **computed**, and
+  so is the **name**: *anion + cation in the genitive* covers 308 of 322 from
+  the `ru2` field on the cations. Only the 14 acids (the H⁺ column, «вода»
+  included) are written out, in `data/compounds.json`. **No description on the
+  card** — dropped at the user's request. The formula code that both the browser
+  and the server need lives once, in `public/formula.js`.
 - **Scope:** grid cells show a single centered letter; the category colors are the
   warm metal tint (Tasks 5–6) and the cool noble-gas tint (Task 8), both on both
   forms.
@@ -733,12 +757,14 @@ console errors and no failed requests.
 ## Roadmap (future — not started)
 
 - Further tasks to be defined in chat. Update this file whenever a new task is agreed.
-- **Fill in the remaining 317 substance pages** — the mechanism is done, what is
-  left is names and descriptions in `data/compounds.json`. Worth deciding first
-  whether the *name* should also be computed: «хлорид магния» is the anion's
-  Russian name plus the cation's in the genitive, so 23 genitive forms would
-  generate ~300 of them; the exceptions (Вода, and the acids) would still be
-  written by hand. That is a data decision, not a code one.
+- Substance pages carry formula, name, class, solubility, molar mass and the two
+  ions. Possible next fields, all as data rather than prose: trivial names
+  («поваренная соль», «медный купорос»), the colour of the precipitate, the
+  dissociation equation for the soluble ones.
+- The acetates are written cation-first — `NaCH₃COO`, `Ca(CH₃COO)₂` — because
+  the formula builder puts the cation first for everything. The accepted
+  spelling is `CH₃COONa`. Fixing it means one more exception in
+  `formulaAscii()`, and it would change 22 of the 322 addresses.
 - Solubility table follow-ups: highlight the whole row and column on hover (only
   the cell is highlighted now); precipitate colours (CuS black, Ag₃PO₄ yellow,
   Fe(OH)₃ brown) as another field in the data; printing the table onto one A4
