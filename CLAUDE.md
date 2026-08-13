@@ -556,6 +556,17 @@ top (~23, H⁺ … Cu²⁺); the counts in the brief were approximate.
 6. **Colour** — Р faint green, М the same warm sand as the metals, Н faint pink,
    «—» grey. The colour is a hint; the letter is the data, so the table survives
    black-and-white printing. Both periodic tables link to the page and back.
+7. **Ion labels are Unicode text, not `<sub>`/`<sup>`.** An ion label carries two
+   different digits — the **atom count** (SO₄, NO₂, NH₄, CH₃COO) and the
+   **charge** (²⁻, ³⁻, ⁺) — and at this type size the browser offsets sub and sup
+   too little to keep them apart: `SO₃²⁻` set as markup read as «SO32−». It hurt
+   NO₂⁻ and NH₄⁺ most, where the digit is an atom count and the charge is 1.
+   So the count now comes from U+2080–2089 (`₀₁₂₃₄₅₆₇₈₉`) and the charge from
+   U+2070/00B9/00B2/00B3/2074–2079 with the superscript signs U+207A `⁺` and
+   U+207B `⁻` — the height difference is drawn into the glyph, not applied by
+   CSS, so the two never merge. The labels hold no markup at all now
+   (`textContent`, not `innerHTML`); the data was always right, only the
+   rendering was wrong.
 
 **On the sources:** no reference table could be extracted from the web — nearly
 all of them are images, and the machine-readable copies contradict each other
@@ -578,7 +589,11 @@ CuS, Ag₃PO₄, Cu(OH)₂, Fe(OH)₃, limewater) correct. In real Chromium: 322
 23 headers, 14 side labels, no overlaps, distribution identical to the JSON, a
 tooltip on every cell, 4 legend rows, 4 distinct backgrounds, links both ways,
 and no regression — `index.html` 118 cells, `short.html` 90, the oxygen card
-intact, no console errors.
+intact, no console errors. All 37 ion labels are compared character by
+character, and the check additionally forbids a plain digit anywhere, a
+subscript charge sign (`₊` `₋`), a label not ending in a charge, and a
+superscript digit anywhere except immediately before that sign — so an atom
+count cannot silently move up.
 
 ## Decisions (resolved in chat)
 
