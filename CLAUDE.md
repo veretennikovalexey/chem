@@ -61,17 +61,21 @@ chem/
 ├── data/
 │   ├── elements.json    # 118 elements
 │   │                    # { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
-│   └── solubility_table.json  # solubility: cations[23], anions[14], grid[14] rows of Р/М/Н/—
+│   ├── solubility_table.json  # solubility: cations[23], anions[14], grid[14] rows of Р/М/Н/—
+│   └── compounds.json   # substance pages: formula -> { ru, about }; 5 of 322 filled
 ├── public/              # everything the browser may load — the static root
 │   ├── index.html       # long form (18 groups): markup + root grid container
 │   ├── app.js           # fetches elements.json, renders the long-form grid of links
 │   ├── short.html       # short form (8 groups): markup + grid + series containers
 │   ├── short.js         # renders the short-form table from the same elements.json
 │   ├── solubility_table.html  # solubility of acids, bases and salts in water
-│   ├── solubility_table.js    # renders it; builds every formula from the ion charges
-│   └── style.css        # both grids + solubility table + hover + element-page styles
+│   ├── solubility_table.js    # renders it, one link per cell
+│   ├── formula.js       # ion labels, formulas, page slugs, atom counts —
+│   │                    # loaded by the browser AND required by server.js
+│   └── style.css        # both grids + solubility table + hover + card styles
 ├── server/
-│   └── server.js        # Node server: static files + dynamic /N.html pages (port 1429)
+│   └── server.js        # Node server: static files + dynamic /N.html element
+│                        # pages + /slug.html substance pages (port 1429)
 ├── start.cmd            # launcher: node server\server.js
 ├── CLAUDE.md            # this file — project info & plan
 ├── chemistry_lessons.md
@@ -83,8 +87,9 @@ chem/
 
 **URLs are independent of this layout** — the browser asks for `/index.html`,
 `/short.html`, `/solubility_table.html`, `/style.css`, `/app.js`, `/short.js`,
-`/solubility_table.js`, `/N.html`, and for data by bare name
-(`/elements.json`, `/solubility_table.json`); nothing carries a folder prefix.
+`/solubility_table.js`, `/formula.js`, `/N.html`, `/<slug>.html`, and for data by
+bare name (`/elements.json`, `/solubility_table.json`); nothing carries a folder
+prefix.
 
 ## Conventions
 
@@ -595,6 +600,82 @@ subscript charge sign (`₊` `₋`), a label not ending in a charge, and a
 superscript digit anywhere except immediately before that sign — so an atom
 count cannot silently move up.
 
+## Task 14 — A page per substance of the solubility table — ✅ DONE
+
+**Goal:** Clicking any square of the solubility table opens a page for that
+substance. The address is the formula — `MgCl2` → `MgCl2.html`; lowercase is
+fine, and a bracket becomes a dash if it cannot be used in an address. The page
+carries the Russian name and the formula with a **Unicode** subscript
+(«Хлорид магния MgCl₂»). **Only 5 pages** are filled in for now, not all 322.
+
+**How it was built:**
+
+1. **One module for the formula — `public/formula.js`.** The cell label
+   («MgCl₂»), the address of its page (`mgcl2.html`) and the heading of that
+   page have to agree, and they are produced in two different processes: the
+   browser draws the table, the server renders the page. So the ion labels, the
+   formula builder, the slug rule and the atom counter moved out of
+   `solubility_table.js` into one file that the browser loads as a script and
+   `server.js` `require`s (`module.exports` behind a `typeof module` guard). It
+   lives in `public/` because the browser loads it. Two copies of that code
+   would eventually disagree and the links would point at nothing.
+2. **The address — lowercase, brackets → dash.** `Al2(SO4)3` → `al2-so4-3`,
+   `(NH4)2SO4` → `nh4-2so4` (doubled and edge dashes collapse). Brackets are
+   legal in a URL but get escaped by browsers and chat clients, so the user's
+   own fallback is used instead. **All 322 addresses come out different** — the
+   lowercasing was checked for collisions (`CoS`/`COS`-style clashes), and no
+   slug is all digits, so nothing can shadow the `/N.html` element pages.
+   The server puts the *requested* name through the same `slug()`, so
+   `/MgCl2.html` and even `/Al2(SO4)3.html` open the same page.
+3. **Every cell is a link** — the brief says «любой квадратик», so all 322,
+   including the «—» cells: «не существует» is an answer, not a gap (Task 13),
+   and the page says so. The legend swatches stay plain `<div>`s.
+4. **`data/compounds.json`** holds only what cannot be computed: the Russian
+   name and a description, keyed by the plain-text formula. **5 of 322 are
+   filled**; the other 317 open a page that shows everything computable and says
+   plainly that the name and the description are not written yet. The count
+   («заполнено 5 страниц из 322») is counted at startup, not typed in.
+5. **The rest of the card is computed**, in the spirit of the Ar rounding:
+   class of substance from the pair of ions (H⁺ + OH⁻ → оксид, H⁺ → кислота,
+   OH⁻ → основание, otherwise соль), the solubility and its wording from
+   `solubility_table.json`, the **molar mass** from the atom counts and the `ar`
+   values in `elements.json` (rounded to a whole number, the same render-rule
+   pattern), and the two ions — a monatomic one links to its element card, which
+   closes the loop between the two tables.
+6. **The subscript is Unicode text**, as asked, not `<sub>` — the same decision
+   as the ion labels in Task 13, and it lets the `<title>` carry the real
+   formula: «Хлорид магния MgCl₂».
+7. **No new page template** — the substance card reuses the element card's CSS
+   (`.element-page`, `.element-head`, `.element-name-en`, `.props`); only the
+   description paragraph and the ion links are new.
+
+**The 5 chosen** (the brief said any five): they were picked to exercise every
+mechanism once, so the shape is proven before 317 names are written —
+**MgCl₂** the user's own example (plain salt), **Al₂(SO₄)₃** brackets and two
+indices → the dash rule, **H₂O** the special-cased formula *and* the proof that
+the name has to be stored rather than derived from the ions («Вода», not
+«гидроксид водорода»), **NaOH** a base rather than a salt, **BaSO₄** the
+insoluble qualitative-test landmark.
+
+**Verified:** an independent checker (the formula, slug and molar-mass rules
+written a second time, in Python, against the live server) — 322 cells, 322
+distinct formulas and 322 distinct addresses, alphabet `[a-z0-9-]`, none all
+digits, none clashing with `index`/`short`/`style`/`app`/`solubility_table`;
+**all 322 pages → 200**, `/nope.html`, `/0.html`, `/999.html`, `/mgcl3.html` →
+404; every key of `compounds.json` corresponds to a real cell; each of the 5
+pages carries the right title, the Unicode formula, the name, the description,
+the class, the solubility wording taken from the table, the molar mass and the
+ion links; `/MgCl2.html`, `/Al2(SO4)3.html`, `/BASO4.html` return the canonical
+page byte for byte; 12 molar masses hand-checked (H₂O 18, NaOH 40, MgCl₂ 95,
+BaSO₄ 233, Al₂(SO₄)₃ 342, CaCO₃ 100, KNO₃ 101, AgCl 143, CH₃COOH 60,
+(NH₄)₂SO₄ 132, Ca₃(PO₄)₂ 310, Fe₂(SO₄)₃ 400). In real Chromium: 322 cells all
+`<a>`, no overlaps, the table unchanged (23 headers, 14 side labels, 4 colours,
+tooltips, H⁺…Cu²⁺ and OH⁻…SiO₃²⁻); a real mouse click on the MgCl₂ square opens
+`mgcl2.html`; the ion link opens the magnesium card; back returns 322 cells; a
+«—» cell shows «не существует» and no molar mass; no regression — 118 cells on
+the long form, 90 on the short, the oxygen card and chlorine's 35.5 intact, no
+console errors and no failed requests.
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server\server.js`, via `start.cmd`), dependency-free —
@@ -613,6 +694,14 @@ count cannot silently move up.
   grid is stored as 14 strings, one per anion; formulas are computed, never
   stored. Judgement calls where sources disagree are listed in
   `work-12-08-2026-2.txt`.
+- **Substance pages:** one page per cell of the solubility table, addressed by
+  the formula — lowercase, every bracket a dash (`Al2(SO4)3` → `al2-so4-3.html`);
+  all 322 addresses are distinct and the server accepts any spelling of them.
+  Formula, class, solubility, molar mass and the ion links are **computed**;
+  `data/compounds.json` stores only the Russian name and the description, and
+  holds **5 of 322** for now — the rest open a page that says so rather than a
+  404. The formula code that both the browser and the server need lives once, in
+  `public/formula.js`.
 - **Scope:** grid cells show a single centered letter; the category colors are the
   warm metal tint (Tasks 5–6) and the cool noble-gas tint (Task 8), both on both
   forms.
@@ -644,10 +733,17 @@ count cannot silently move up.
 ## Roadmap (future — not started)
 
 - Further tasks to be defined in chat. Update this file whenever a new task is agreed.
+- **Fill in the remaining 317 substance pages** — the mechanism is done, what is
+  left is names and descriptions in `data/compounds.json`. Worth deciding first
+  whether the *name* should also be computed: «хлорид магния» is the anion's
+  Russian name plus the cation's in the genitive, so 23 genitive forms would
+  generate ~300 of them; the exceptions (Вода, and the acids) would still be
+  written by hand. That is a data decision, not a code one.
 - Solubility table follow-ups: highlight the whole row and column on hover (only
   the cell is highlighted now); precipitate colours (CuS black, Ag₃PO₄ yellow,
-  Fe(OH)₃ brown) as another field in the data; a link from a cell to the cation's
-  element card; printing the table onto one A4 page.
+  Fe(OH)₃ brown) as another field in the data; printing the table onto one A4
+  page. (The link from a cell to the cation's element card now exists — via the
+  substance page, Task 14.)
 - Element pages now show number, symbol, EN/RU names, Ar, group, electron formula
   and the outer-level orbital diagram. Possible next steps: real ground-state config
   exceptions, or further properties (density, melting point, electronegativity) —

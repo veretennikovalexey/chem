@@ -7,64 +7,28 @@
 //                Р растворимо · М малорастворимо · Н нерастворимо ·
 //                — не существует (разлагается водой)
 // Строка grid[i] описывает анион anions[i]; её j-й символ — вещество из
-// cations[j] и anions[i]. Ни одна формула в файле не хранится: формула
-// вещества собирается здесь из зарядов ионов, поэтому данные нельзя
-// рассинхронизировать с подписями.
-
-// В подписи иона встречаются ДВЕ разные цифры, и путать их нельзя:
-//   число атомов в группе — внизу: SO₄, NO₂, NH₄, CH₃COO
-//   заряд иона            — вверху: ²⁻, ³⁻, ⁺
-// Опаснее всего NO₂⁻ и NH₄⁺: если обе цифры набрать одинаково, «NO2-»
-// читается как заряд 2−, хотя двойка здесь — два атома кислорода, а заряд
-// у нитрит-иона единичный. Поэтому обе цифры берутся из юникода: у ₂ и ² в
-// шрифте разная высота по рисунку глифа, а не по сдвигу через CSS, и они не
-// сливаются даже вплотную. Разметка <sub>/<sup> тут не годится — при мелком
-// кегле оба индекса оказываются на одной высоте.
-const SUB = "₀₁₂₃₄₅₆₇₈₉";
-const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
-const MINUS = "−"; // типографский минус, как на карточке элемента
-
-// "SO4" -> "SO₄";  цифры внутри формулы группы — это всегда число атомов.
-const textSym = (s) => s.replace(/\d/g, (d) => SUB[+d]);
-
-// Заряд: "²⁻", "³⁻", "⁺". Единицу не пишут — Cl⁻, а не Cl¹⁻.
-function chargeText(q) {
-  const n = Math.abs(q) > 1 ? SUP[Math.abs(q)] : "";
-  return n + (q > 0 ? "⁺" : "⁻");
-}
-
-// Готовая подпись иона, обычным текстом: SO₄²⁻, NO₂⁻, NH₄⁺, Fe³⁺.
-const ionText = (ion) => textSym(ion.sym) + chargeText(ion.charge);
-
-const gcd = (a, b) => (b ? gcd(b, a % b) : a);
-
-// Формула вещества из катиона и аниона: индексы — по наименьшему общему
-// кратному зарядов; многоатомный ион с индексом больше 1 берётся в скобки.
-// Два исключения, где обычная запись отличается от механической:
-// H+ + OH- это вода, а уксусная кислота пишется CH3COOH, а не HCH3COO.
-function formula(cat, an) {
-  if (cat.sym === "H" && an.sym === "OH") return "H₂O";
-  if (cat.sym === "H" && an.sym === "CH3COO") return "CH₃COOH";
-  const g = gcd(cat.charge, -an.charge);
-  const nCat = -an.charge / g;
-  const nAn = cat.charge / g;
-  const part = (ion, n) =>
-    (ion.poly && n > 1 ? "(" + textSym(ion.sym) + ")" : textSym(ion.sym)) +
-    (n > 1 ? textSym(String(n)) : "");
-  return part(cat, nCat) + part(an, nAn);
-}
+// cations[j] и anions[i]. Ни одна формула в файле не хранится: подписи ионов,
+// формула вещества и адрес его страницы собираются в formula.js из зарядов
+// ионов, поэтому данные нельзя рассинхронизировать с подписями.
+//
+// formula.js подключён в solubility_table.html раньше этого файла; оттуда
+// берутся ionText, formula, formulaAscii и slug. Тот же самый файл читает
+// server.js, когда отдаёт страницу вещества, — формула в клетке, адрес
+// ссылки и заголовок страницы по построению совпадают.
 
 const CLASS = { Р: "sol-p", М: "sol-m", Н: "sol-n", "—": "sol-x" };
 
-// Ни одна подпись больше не содержит разметки — только текст, поэтому
-// textContent, а не innerHTML.
-function cell(className, text, col, row, title) {
-  const div = document.createElement("div");
+// Ни одна подпись не содержит разметки — только текст, поэтому textContent,
+// а не innerHTML. С href клетка становится ссылкой на страницу вещества,
+// без href — обычной клеткой (шапка, боковик, образцы в легенде).
+function cell(className, text, col, row, title, href) {
+  const div = document.createElement(href ? "a" : "div");
   div.className = className;
   div.textContent = text;
   div.style.gridColumn = col;
   div.style.gridRow = row;
   if (title) div.title = title;
+  if (href) div.href = href;
   return div;
 }
 
@@ -92,8 +56,11 @@ fetch("solubility_table.json")
       const values = [...grid[i]];
       values.forEach((v, j) => {
         const c = cations[j];
-        const name = `${formula(c, a)} — ${legendOf(legend, v)}`;
-        table.appendChild(cell("sol-cell " + CLASS[v], v, j + 2, row, name));
+        const ascii = formulaAscii(c, a);
+        const name = `${formulaText(ascii)} — ${legendOf(legend, v)}`;
+        table.appendChild(
+          cell("sol-cell " + CLASS[v], v, j + 2, row, name, slug(ascii) + ".html")
+        );
       });
     });
 

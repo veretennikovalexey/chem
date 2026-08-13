@@ -4,12 +4,15 @@
 //
 // The project is split in three folders; this file resolves both of the others
 // relative to itself, so the server can be started from any working directory:
-//   data/    elements.json — the single source of truth
-//   public/  what the browser may load: index.html, short.html, app.js,
-//            short.js, style.css
+//   data/    elements.json, solubility_table.json, compounds.json — the single
+//            source of truth
+//   public/  what the browser may load: index.html, short.html,
+//            solubility_table.html, app.js, short.js, solubility_table.js,
+//            formula.js, style.css
 //   server/  this file
 // The URLs are unchanged by the split: /index.html, /short.html, /style.css,
-// /app.js, /short.js, /elements.json, /N.html.
+// /app.js, /short.js, /elements.json, /N.html — plus one page per substance of
+// the solubility table, /mgcl2.html, /al2-so4-3.html and so on.
 
 const http = require("http");
 const fs = require("fs");
@@ -30,7 +33,15 @@ const TYPES = {
 const ELEMENTS_FILE = path.join(DATA, "elements.json");
 const ELEMENTS = JSON.parse(fs.readFileSync(ELEMENTS_FILE, "utf8"));
 const BY_NUM = {};
-for (const el of ELEMENTS) BY_NUM[el.num] = el;
+const BY_SYM = {};
+for (const el of ELEMENTS) {
+  BY_NUM[el.num] = el;
+  BY_SYM[el.sym] = el;
+}
+
+// HTML escaping for anything that comes out of a data file.
+const esc = (s) =>
+  String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
 // Relative atomic mass as it is shown on the card. elements.json keeps the exact
 // IUPAC value; the rounding rule lives here:
@@ -164,6 +175,115 @@ function renderElementPage(el) {
 `;
 }
 
+// ---------------------------------------------------------------------------
+// A page per substance of the solubility table: /mgcl2.html, /al2-so4-3.html.
+//
+// The formula, its URL and the label printed in the table cell are all built by
+// one shared module, public/formula.js — the browser loads it as a script, this
+// file requires it. Two copies of that code would eventually disagree and the
+// links would point at pages that do not exist.
+// ---------------------------------------------------------------------------
+const F = require("../public/formula.js");
+const SOLUB = JSON.parse(fs.readFileSync(path.join(DATA, "solubility_table.json"), "utf8"));
+const COMPOUNDS = JSON.parse(fs.readFileSync(path.join(DATA, "compounds.json"), "utf8"));
+
+const LEGEND = {};
+for (const l of SOLUB.legend) LEGEND[l.code] = l;
+
+// slug -> everything a page needs, built once from the table itself, so every
+// cell has a page and no page exists without a cell. compounds.json adds only
+// what cannot be computed: the Russian name and the description.
+const BY_SLUG = {};
+SOLUB.anions.forEach((an, i) => {
+  [...SOLUB.grid[i]].forEach((value, j) => {
+    const cat = SOLUB.cations[j];
+    const ascii = F.formulaAscii(cat, an);
+    BY_SLUG[F.slug(ascii)] = { cat, an, value, ascii, text: COMPOUNDS[ascii] || null };
+  });
+});
+
+const FILLED = Object.keys(COMPOUNDS).filter((k) => k[0] !== "_").length;
+const TOTAL = Object.keys(BY_SLUG).length;
+
+// Molar mass, computed the same way Ar is: elements.json keeps the exact IUPAC
+// values, the rounding is a render rule and lives here. M(MgCl₂) = 95 г/моль.
+function molarMass(ascii) {
+  const atoms = F.atomCounts(ascii);
+  let m = 0;
+  for (const sym in atoms) {
+    if (!BY_SYM[sym]) return null;
+    m += BY_SYM[sym].ar * atoms[sym];
+  }
+  return Math.round(m);
+}
+
+// Which class the substance belongs to follows from the pair of ions alone.
+function substanceClass(cat, an) {
+  if (cat.sym === "H" && an.sym === "OH") return "оксид водорода";
+  if (cat.sym === "H") return "кислота";
+  if (an.sym === "OH") return "основание";
+  return "соль";
+}
+
+// A monatomic ion has an element card; a polyatomic one (SO₄²⁻, NH₄⁺) has not.
+function ionHtml(ion) {
+  const el = ion.poly ? null : BY_SYM[ion.sym];
+  const label = esc(F.ionText(ion));
+  return el ? `<a href="${el.num}.html">${label}</a>` : label;
+}
+
+function renderCompoundPage(c) {
+  const shown = esc(F.formulaText(c.ascii));
+  const exists = c.value !== "—";
+  const legend = LEGEND[c.value];
+  const m = exists ? molarMass(c.ascii) : null;
+
+  const name = c.text
+    ? `<div class="element-name-en">${esc(c.text.ru)}</div>`
+    : "";
+
+  const about = c.text
+    ? `<p class="about">${esc(c.text.about)}</p>`
+    : `<p class="about about-empty">Название и описание этого вещества пока не добавлены: ` +
+      `в таблице растворимости заполнено ${FILLED} страниц из ${TOTAL}. Всё остальное на ` +
+      `этой странице посчитано по формуле и по таблице, поэтому верно уже сейчас.</p>`;
+
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${c.text ? esc(c.text.ru) + " " : ""}${shown}</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="element-page">
+    <a class="back" href="solubility_table.html">← Таблица растворимости</a>
+    <div class="element-head">${shown}</div>
+    ${name}
+
+    <div class="props">
+      <div class="prop"><span class="k">Класс:</span> <span class="v">${substanceClass(c.cat, c.an)}</span></div>
+
+      <div class="prop"><span class="k">Растворимость в воде:</span> <span class="v">${esc(legend.name)}</span>${
+        legend.note ? ` <span class="k">— ${esc(legend.note)}</span>` : ""
+      }</div>
+      ${
+        m
+          ? `<div class="prop"><span class="k">Молярная масса M:</span> <span class="v">${m} г/моль</span></div>`
+          : ""
+      }
+
+      <div class="prop"><span class="k">Ионы:</span> <span class="ox">${ionHtml(c.cat)} и ${ionHtml(c.an)}</span></div>
+    </div>
+
+    ${about}
+  </main>
+</body>
+</html>
+`;
+}
+
 const server = http.createServer((req, res) => {
   let urlPath = decodeURIComponent(req.url.split("?")[0]);
   if (urlPath === "/") urlPath = "/index.html";
@@ -180,6 +300,21 @@ const server = http.createServer((req, res) => {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("404 Not Found");
     return;
+  }
+
+  // Substance page from the solubility table: /mgcl2.html, /al2-so4-3.html.
+  // The requested name is put through the same slug() that builds the links, so
+  // /MgCl2.html and even /Al2(SO4)3.html land on the same page. A name that is
+  // not a substance (index, short, solubility_table) is not in the map and
+  // falls through to the static handler below.
+  const c = urlPath.match(/^\/(.+)\.html$/);
+  if (c) {
+    const compound = BY_SLUG[F.slug(c[1])];
+    if (compound) {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(renderCompoundPage(compound));
+      return;
+    }
   }
 
   // The data files live in data/, outside the static root, but the front-end
