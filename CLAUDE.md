@@ -654,10 +654,10 @@ name** — see "Naming" below.
 5. **The rest of the card is computed**, in the spirit of the Ar rounding:
    class of substance from the pair of ions (H⁺ + OH⁻ → оксид, H⁺ → кислота,
    OH⁻ → основание, otherwise соль), the solubility and its wording from
-   `solubility_table.json`, the **molar mass** from the atom counts and the `ar`
-   values in `elements.json` (rounded to a whole number, the same render-rule
-   pattern), and the two ions — a monatomic one links to its element card, which
-   closes the loop between the two tables.
+   `solubility_table.json`, the **molar mass** from the atom counts and the Ar
+   values **as the element cards print them** (Task 15 — Cl is 35.5 there, so
+   M(NaCl) = 58.5), and the two ions — a monatomic one links to its element
+   card, which closes the loop between the two tables.
 6. **The subscript is Unicode text**, as asked, not `<sub>` — the same decision
    as the ion labels in Task 13, and it lets the `<title>` carry the real
    formula: «Хлорид магния MgCl₂».
@@ -679,7 +679,8 @@ substance does not exist), the ion links and the back link are right;
 `/MgCl2.html`, `/Al2(SO4)3.html`, `/BASO4.html` return the canonical page byte
 for byte; 12 molar masses hand-checked (H₂O 18, NaOH 40, MgCl₂ 95, BaSO₄ 233,
 Al₂(SO₄)₃ 342, CaCO₃ 100, KNO₃ 101, AgCl 143, CH₃COOH 60, (NH₄)₂SO₄ 132,
-Ca₃(PO₄)₂ 310, Fe₂(SO₄)₃ 400).
+Ca₃(PO₄)₂ 310, Fe₂(SO₄)₃ 400). *AgCl became 143.5 in Task 15; the other 11 are
+unchanged.*
 
 *Names (73):* the 22 genitive forms and the 14 acid names were **written out a
 second time inside the checker**, so the table and the check are two
@@ -698,6 +699,52 @@ magnesium card; back returns 322 cells; a «—» cell shows «не сущест
 its name and shows no molar mass; no regression — 118 cells on the long form,
 90 on the short, the oxygen card and chlorine's 35.5 intact, no console errors
 and no failed requests.
+
+## Task 15 — M(NaCl) = 58.5: molar mass from the printed Ar — ✅ DONE
+
+**Goal (todo-14-08-2026.txt):** `nacl.html` said «Молярная масса M: 58 г/моль»,
+but the teacher counts M(NaCl) = 23 + 35.5 = 58.5. Fix the mass, given that
+chlorine weighs 35.5.
+
+**The cause.** `molarMass()` summed the **exact** IUPAC values and rounded once
+at the end: 22.98976928 + 35.45 = 58.43977 → 58. Chlorine's 35.5 already existed
+as a render rule (Task 9, `AR_DECIMALS = { 17: 1 }`) but only the element card
+used it; the molar mass never saw it. Two roundings of one quantity, and the two
+pages disagreed.
+
+**The fix — one rule instead of two.** `shownAr(el)` now returns the rounded Ar
+as a *number* and is the single source: `formatAr()` prints it on the card and
+`molarMass()` sums it. So M is the sum of exactly the numbers the site itself
+shows — a pupil can re-add them by hand and land on the same value, which is the
+whole point of the card. Since Cl is the only element with a decimal, the sum is
+a whole number or a half; the final `Math.round(m * 10) / 10` only clears binary
+float noise, and a whole result still prints bare (95, not 95.0).
+
+**What moved — 28 of the 291 existing substances.** Nine gained the half:
+HCl 36 → 36.5, LiCl 42 → 42.5, NaCl 58 → **58.5**, KCl 75 → 74.5,
+NH₄Cl 53 → 53.5, AgCl 143 → 143.5, AlCl₃ 133 → 133.5, CrCl₃ 158 → 158.5,
+FeCl₃ 162 → 162.5. Nineteen more shifted by ±1, because rounding now happens
+per element rather than on the total — CuCl₂ 134 → 135 (64 + 71), SrBr₂ 247 → 248
+(88 + 160), Ba₃(PO₄)₂ 602 → 601 (411 + 62 + 128), and the rest of the phosphates
+and the Hg/Sr/Ni halides. **Every one of the 28 now matches the school
+arithmetic**, which is what the ±1 buys: the old 602 could not be reproduced from
+any printed Ar. The other 263 are unchanged, including 11 of the 12 masses
+hand-checked in Task 14.
+
+**Chosen in chat:** the user picked "sum the printed Ar" over "special-case
+chlorine only". The narrow fix would have given KCl 74.6 and AgCl 143.6 — right
+to three decimals, and wrong on the teacher's board.
+
+**Verified:** an independent checker over the live server — it reads the printed
+Ar off all **118** element cards, parses the printed formula out of each
+substance page, counts the atoms with its own bracket/subscript parser and
+re-derives M. **291 existing substances all match** (9 printing a half), the
+**31** non-existent cells still show no M, no trailing `.0`, no `NaN`, and
+`/nope.html` `/0.html` `/999.html` `/mgcl3.html` still 404. A real Chromium run:
+a mouse click on the NaCl square opens `nacl.html` with «58.5 г/моль», the Na⁺
+link opens the sodium card (Ar 23), chlorine's card still reads 35.5, and there
+is no regression — 322 links on the solubility table, 118 cells on the long
+form, 90 on the short, no console errors, no failed requests.
 
 ## Decisions (resolved in chat)
 
@@ -720,7 +767,8 @@ and no failed requests.
 - **Substance pages:** one page per cell of the solubility table, addressed by
   the formula — lowercase, every bracket a dash (`Al2(SO4)3` → `al2-so4-3.html`);
   all 322 addresses are distinct and the server accepts any spelling of them.
-  Formula, class, solubility, molar mass and the ion links are **computed**, and
+  Formula, class, solubility, molar mass (Task 15) and the ion links are
+  **computed**, and
   so is the **name**: *anion + cation in the genitive* covers 308 of 322 from
   the `ru2` field on the cations. Only the 14 acids (the H⁺ column, «вода»
   included) are written out, in `data/compounds.json`. **No description on the
@@ -740,6 +788,12 @@ and no failed requests.
   (integers everywhere, one decimal for Cl) is a **render rule** in `server.js`.
   Radioactive elements use the mass number of the most stable isotope. Dy 162.50
   rounds **up** to 163.
+- **Molar mass:** M is the sum of the **rounded** Ar values — the very numbers the
+  element cards print — not the rounded sum of the exact ones (Task 15). Chlorine
+  is 35.5 on its card, so M(NaCl) = 23 + 35.5 = **58.5**, and every M on the site
+  is reproducible by hand from the site's own element cards. Cl is the only
+  element with a decimal, so an M is a whole number or a half; a whole one prints
+  bare (95, never 95.0).
 - **Oxidation states:** `elements.json` stores all documented states (`ox`) and
   the characteristic subset (`oxm`); **0 is never stored**. The card prints the
   full list with the characteristic ones bold, and computes «высшая / низшая»

@@ -50,6 +50,13 @@ const esc = (s) =>
 //     tables print it, because its two isotopes make the halfway value matter.
 const AR_DECIMALS = { 17: 1 };
 
+// The rounded value as a number. This is the single source of the rule: the
+// card prints it and every molar mass is built out of it, so the two can never
+// disagree.
+function shownAr(el) {
+  return Number(el.ar.toFixed(AR_DECIMALS[el.num] || 0));
+}
+
 function formatAr(el) {
   return el.ar.toFixed(AR_DECIMALS[el.num] || 0);
 }
@@ -217,16 +224,21 @@ SOLUB.anions.forEach((an, i) => {
   });
 });
 
-// Molar mass, computed the same way Ar is: elements.json keeps the exact IUPAC
-// values, the rounding is a render rule and lives here. M(MgCl₂) = 95 г/моль.
+// Molar mass, summed from the Ar values the element cards actually print, not
+// from the exact IUPAC ones: chlorine is 35.5 on its card, so M(NaCl) = 23 +
+// 35.5 = 58.5 г/моль — the number a pupil gets by hand and the one the
+// textbook prints. Rounding the exact sum instead gave 58, which no school
+// arithmetic reproduces. Chlorine is the only element with a decimal, so the
+// sum lands on a whole number or a half; the final rounding only clears binary
+// float noise, and a whole result prints bare (M(MgCl₂) = 95, never 95.0).
 function molarMass(ascii) {
   const atoms = F.atomCounts(ascii);
   let m = 0;
   for (const sym in atoms) {
     if (!BY_SYM[sym]) return null;
-    m += BY_SYM[sym].ar * atoms[sym];
+    m += shownAr(BY_SYM[sym]) * atoms[sym];
   }
-  return Math.round(m);
+  return Math.round(m * 10) / 10;
 }
 
 // Which class the substance belongs to follows from the pair of ions alone.
