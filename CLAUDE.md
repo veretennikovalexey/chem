@@ -61,8 +61,9 @@ chem/
 ├── data/
 │   ├── elements.json    # 118 elements
 │   │                    # { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
-│   ├── solubility_table.json  # solubility: cations[23], anions[14], grid[14] rows of Р/М/Н/—
-│   │                    # ions carry ru (nominative) and, for cations, ru2 (genitive)
+│   ├── solubility_table.json  # solubility: cations[23], anions[15], grid[15] rows of Р/М/Н/—
+│   │                    # ions carry ru (nominative), cls (class of substance)
+│   │                    # and, for cations, ru2 (genitive)
 │   └── compounds.json   # the 14 names that the naming rule cannot produce:
 │                        # the acids, formula -> name
 ├── public/              # everything the browser may load — the static root
@@ -631,6 +632,9 @@ name** — see "Naming" below.
    own fallback is used instead. **All 322 addresses come out different** — the
    lowercasing was checked for collisions (`CoS`/`COS`-style clashes), and no
    slug is all digits, so nothing can shadow the `/N.html` element pages.
+   **→ Amended by Task 16:** 345 cells now share 344 addresses. The single
+   collision is deliberate — H⁺/CO₃²⁻ and H⁺/HCO₃⁻ are both carbonic acid — and
+   the first cell to claim an address keeps it.
    The server puts the *requested* name through the same `slug()`, so
    `/MgCl2.html` and even `/Al2(SO4)3.html` open the same page.
 3. **Every cell is a link** — the brief says «любой квадратик», so all 322,
@@ -746,6 +750,86 @@ link opens the sodium card (Ar 23), chlorine's card still reads 35.5, and there
 is no regression — 322 links on the solubility table, 118 cells on the long
 form, 90 on the short, no console errors, no failed requests.
 
+## Task 16 — Гидрокарбонаты: a 15th row, HCO₃⁻ — ✅ DONE
+
+**Goal (todo-17-08-2026.txt):** put sodium bicarbonate into the solubility table,
+and the whole bicarbonate row if it can be done.
+
+It could: one anion and one 23-character string in `data/solubility_table.json`
+put all 23 hydrogen carbonates on the table, each with its own page, because
+every label on this project is computed rather than stored. The row sits
+directly under CO₃²⁻ — the acid salt next to its middle salt, which is how a
+pupil compares NaHCO₃ with Na₂CO₃.
+
+**The chemistry — the row is only Р and «—».** «Все гидрокарбонаты растворимы»
+is the school rule, and it holds: a hydrogen carbonate that exists is soluble,
+so there is no `М` and no `Н` in the row. **Р means soluble, not isolable.**
+Ca(HCO₃)₂, Mg(HCO₃)₂, Ba(HCO₃)₂, Sr(HCO₃)₂ and LiHCO₃ have never been obtained
+as solids, but they exist in solution and that is exactly what the table is
+about — Ca(HCO₃)₂ *is* временная жёсткость воды, and a dash there would delete a
+syllabus topic. **«—» — 5 cells, the same ones the carbonate row dashes:**
+Al³⁺, Cr³⁺, Fe³⁺, Sn²⁺, Hg²⁺ — the cation hydrolyses completely to hydroxide and
+CO₂, so no carbonate and no hydrogen carbonate can exist. The two rows now read
+consistently, cell for cell.
+
+**How it was built:**
+
+1. **Data — one anion and one string.** `{ "sym": "HCO3", "charge": -1, "poly":
+   true, "ru": "гидрокарбонат", "cls": "кислая соль" }` at index 12, plus
+   `"РРРРРРРРР——Р—РРРРР—РР—Р"` at the same index of `grid`. Nothing else in the
+   data file changed. The table went 14 × 23 = 322 cells to **15 × 23 = 345**.
+2. **Nothing else had to be counted.** `solubility_table.js` reads the row count
+   off the data and `style.css` sets the columns from JS, so the 15th row drew
+   itself; the 22 new formulas — `NaHCO₃`, `Ca(HCO₃)₂`, `Al(HCO₃)₃` — come out of
+   `formulaAscii()` unchanged, with the polyatomic ion parenthesised exactly as
+   before, and the 22 addresses (`nahco3`, `ca-hco3-2`, …) collide with nothing.
+   The names, too: `an.ru + " " + cat.ru2` gives «гидрокарбонат натрия» with no
+   new strings at all.
+3. **The one cell that needed code — H⁺ × HCO₃⁻.** Mechanically it is `HHCO3`, a
+   spelling no textbook uses. It is **carbonic acid, the same substance as the
+   H⁺ × CO₃²⁻ cell** (H₂CO₃ ⇌ H⁺ + HCO₃⁻ is its first dissociation step), so
+   `formulaAscii()` gained a **third** exception beside H₂O and CH₃COOH:
+   `H + HCO3 → H2CO3`. Both cells therefore link to `/h2co3.html`.
+   **This is the first time two cells share an address** — the "all addresses
+   distinct" invariant of Task 14 is now "345 cells, **344** addresses, one
+   deliberate collision". `BY_SLUG` in `server.js` stopped assigning blindly and
+   now **keeps the first claimant**: CO₃²⁻ comes first in `anions`, so the page
+   prints «Ионы: H⁺ и CO₃²⁻», the pair a textbook writes under H₂CO₃. Assigning
+   blindly would have let a later row silently rewrite a page that already
+   existed — a thing worth making impossible, not just avoiding once.
+4. **«Кислая соль» — by starting to read a field that was already there.** Every
+   anion has carried a `cls` since Task 13 and nothing read it; `substanceClass()`
+   decided the class with two hard-coded branches instead. It now returns
+   `an.cls` for every cation but H⁺, so the card for NaHCO₃ says **кислая соль**
+   while Na₂CO₃ says соль — the distinction that is the point of the row — and
+   the function got shorter, not longer. The other 322 cells print exactly what
+   they printed before (286 соль, 22 основание, 14 кислота, 1 оксид водорода).
+
+**Verified:** `check-hco3.js` re-states the rules **independently of the table** —
+the set of cations that form no hydrogen carbonate, the 23 formulas, the 23
+genitive forms and 18 molar masses are all written out a second time inside the
+checker, so a typo on either side shows up as a mismatch. **3947 checks, 0
+errors:** 15 × 23 with the alphabet `РМН—` only; the row is 18 Р and 5 «—» with
+no М and no Н; every cell the carbonate row dashes is dashed here too; **the
+other 14 rows are byte-identical** to what they were; all 345 formulas
+electroneutral with irreducible indices; 344 distinct addresses with exactly one
+collision and it is `h2co3` from exactly the two H⁺ cells; **all 344 pages →
+200** with the right name, class, solubility wording and molar mass, and none on
+the 5 non-existent cells; `/NaHCO3.html` and `/Ca(HCO3)2.html` return the
+canonical page byte for byte; `/hhco3.html`, `/nahco4.html`, `/nope.html`,
+`/999.html` → 404. 18 molar masses hand-checked (NaHCO₃ **84**, KHCO₃ 100,
+LiHCO₃ 68, NH₄HCO₃ 79, Ca(HCO₃)₂ **162**, Mg(HCO₃)₂ 146, Ba(HCO₃)₂ 259,
+AgHCO₃ 169 …), and NaCl 58.5 / MgCl₂ 95 / BaSO₄ 233 / Al₂(SO₄)₃ 342 unmoved.
+
+*Chromium (45):* 345 cells, all links, no overlaps, the side rail reads
+`OH⁻ … CO₃²⁻ HCO₃⁻ CH₃COO⁻ SiO₃²⁻`, the new row renders exactly the stored
+string, tooltips right («NaHCO₃ — растворимо», «Al(HCO₃)₃ — не существует»);
+a real mouse click on the NaHCO₃ square opens `nahco3.html` — «Гидрокарбонат
+натрия», кислая соль, 84 г/моль — and its Na⁺ link opens the sodium card;
+`/h2co3.html` shows «Угольная кислота» with the carbonate ion pair; no
+regression — 118 cells on the long form, 90 on the short, oxygen's card, Cl 35.5
+and NaCl 58.5 all intact, no console errors, no failed requests.
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server\server.js`, via `start.cmd`), dependency-free —
@@ -758,22 +842,34 @@ form, 90 on the short, no console errors, no failed requests.
   root, the only thing the browser may load), `server/` (the code). Data files are
   **not** duplicated into `public/`; any `/*.json` request is served from `data/`
   by basename (Tasks 12–13). URLs are unchanged by the split.
-- **Solubility table:** 23 cations × 14 anions, values Р / М / Н / **—**, where
-  the dash means «не существует» (full hydrolysis, or never obtained) and is a
-  deliberate answer, not a missing one. Fe²⁺ and Fe³⁺ are separate columns. The
-  grid is stored as 14 strings, one per anion; formulas are computed, never
+- **Solubility table:** 23 cations × **15** anions, values Р / М / Н / **—**,
+  where the dash means «не существует» (full hydrolysis, or never obtained) and
+  is a deliberate answer, not a missing one. Fe²⁺ and Fe³⁺ are separate columns.
+  The grid is stored as 15 strings, one per anion; formulas are computed, never
   stored. Judgement calls where sources disagree are listed in
-  `work-12-08-2026-2.txt`.
+  `work-12-08-2026-2.txt` and, for the bicarbonates, `work-17-08-2026.txt`.
+- **Гидрокарбонаты (Task 16):** HCO₃⁻ is the 15th anion, placed directly under
+  CO₃²⁻. The row holds **only Р and «—»** — every hydrogen carbonate that exists
+  is soluble. **Р means soluble, not isolable:** Ca(HCO₃)₂, Mg(HCO₃)₂,
+  Ba(HCO₃)₂, Sr(HCO₃)₂, LiHCO₃ exist only in solution and are still Р, because
+  that is the syllabus (временная жёсткость воды). «—» stands in exactly the 5
+  cells the carbonate row dashes — Al³⁺, Cr³⁺, Fe³⁺, Sn²⁺, Hg²⁺.
 - **Substance pages:** one page per cell of the solubility table, addressed by
   the formula — lowercase, every bracket a dash (`Al2(SO4)3` → `al2-so4-3.html`);
-  all 322 addresses are distinct and the server accepts any spelling of them.
+  the server accepts any spelling of them. **345 cells, 344 addresses:** the two
+  H⁺ cells of CO₃²⁻ and HCO₃⁻ are one substance, carbonic acid, and share
+  `/h2co3.html`; the **first** cell to claim an address keeps it, so the page is
+  the carbonate one. That is the only collision, and `formulaAscii()` has three
+  exceptions for it and its kin — H₂O, CH₃COOH, H₂CO₃.
   Formula, class, solubility, molar mass (Task 15) and the ion links are
-  **computed**, and
-  so is the **name**: *anion + cation in the genitive* covers 308 of 322 from
-  the `ru2` field on the cations. Only the 14 acids (the H⁺ column, «вода»
-  included) are written out, in `data/compounds.json`. **No description on the
-  card** — dropped at the user's request. The formula code that both the browser
-  and the server need lives once, in `public/formula.js`.
+  **computed**, and so is the **name**: *anion + cation in the genitive* covers
+  330 of the 345 cells from the `ru2` field on the cations. Only the acids (the
+  H⁺ column, «вода» included) are written out — 15 cells, 14 entries — in
+  `data/compounds.json`. The **class** comes from the anion's `cls` field
+  (основание / соль / кислая соль); only the H⁺ column is decided in code.
+  **No description on the card** — dropped at the user's request. The formula
+  code that both the browser and the server need lives once, in
+  `public/formula.js`.
 - **Scope:** grid cells show a single centered letter; the category colors are the
   warm metal tint (Tasks 5–6) and the cool noble-gas tint (Task 8), both on both
   forms.

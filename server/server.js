@@ -199,10 +199,11 @@ for (const l of SOLUB.legend) LEGEND[l.code] = l;
 
 // Russian name of the substance. Salts and bases follow one rule — the anion in
 // the nominative plus the cation in the genitive: «хлорид магния», «гидроксид
-// железа (III)» — so 308 of the 322 names are built from `ru` on the anion and
+// железа (III)» — so 330 of the 345 cells are named from `ru` on the anion and
 // `ru2` on the cation instead of being written out one by one. The acids (the
 // whole H⁺ column) do not follow it — «серная кислота», not «сульфат
-// водорода» — and those 14 are the whole of compounds.json.
+// водорода» — and those 15 cells are the whole of compounds.json, 14 entries:
+// the two carbonic-acid cells share the H2CO3 key.
 // Стored lowercase, because that is how the words are spelt inside a sentence;
 // the capital letter is a render rule, like the Ar rounding.
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -215,12 +216,22 @@ function compoundName(cat, an, ascii) {
 
 // slug -> everything a page needs, built once from the table itself, so every
 // cell has a page and no page exists without a cell.
+//
+// 345 cells, 344 addresses: H+/CO3 2- and H+/HCO3- are the same substance,
+// carbonic acid, and both cells link to /h2co3.html (see formulaAscii). The
+// FIRST cell to claim an address keeps it — the carbonate one, because CO3 2-
+// comes first in `anions` — so the page prints «Ионы: H+ и CO3 2-», the pair a
+// textbook writes under H2CO3. Assigning blindly would let the later row
+// silently rewrite an existing page; this way adding an anion can never change
+// a page that is already there.
 const BY_SLUG = {};
 SOLUB.anions.forEach((an, i) => {
   [...SOLUB.grid[i]].forEach((value, j) => {
     const cat = SOLUB.cations[j];
     const ascii = F.formulaAscii(cat, an);
-    BY_SLUG[F.slug(ascii)] = { cat, an, value, ascii, name: compoundName(cat, an, ascii) };
+    const key = F.slug(ascii);
+    if (key in BY_SLUG) return;
+    BY_SLUG[key] = { cat, an, value, ascii, name: compoundName(cat, an, ascii) };
   });
 });
 
@@ -241,12 +252,17 @@ function molarMass(ascii) {
   return Math.round(m * 10) / 10;
 }
 
-// Which class the substance belongs to follows from the pair of ions alone.
+// Which class the substance belongs to. Everything the H+ column produces is an
+// acid (and H+ + OH- is water), so those two lines stay here. For every other
+// cation the class is a property of the ANION alone and is read straight off it:
+// OH- is a base, HCO3- an acid salt («кислая соль» — that is the whole point of
+// NaHCO3 next to Na2CO3), the rest ordinary salts. The `cls` field was already
+// in solubility_table.json and unused; using it removes the hard-coded branches
+// and means a new anion brings its own class along with its data.
 function substanceClass(cat, an) {
   if (cat.sym === "H" && an.sym === "OH") return "оксид водорода";
   if (cat.sym === "H") return "кислота";
-  if (an.sym === "OH") return "основание";
-  return "соль";
+  return an.cls;
 }
 
 // A monatomic ion has an element card; a polyatomic one (SO₄²⁻, NH₄⁺) has not.
