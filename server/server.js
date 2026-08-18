@@ -197,22 +197,13 @@ const COMPOUNDS = JSON.parse(fs.readFileSync(path.join(DATA, "compounds.json"), 
 const LEGEND = {};
 for (const l of SOLUB.legend) LEGEND[l.code] = l;
 
-// Russian name of the substance. Salts and bases follow one rule — the anion in
-// the nominative plus the cation in the genitive: «хлорид магния», «гидроксид
-// железа (III)» — so 330 of the 345 cells are named from `ru` on the anion and
-// `ru2` on the cation instead of being written out one by one. The acids (the
-// whole H⁺ column) do not follow it — «серная кислота», not «сульфат
-// водорода» — and those 15 cells are the whole of compounds.json, 14 entries:
-// the two carbonic-acid cells share the H2CO3 key.
-// Стored lowercase, because that is how the words are spelt inside a sentence;
-// the capital letter is a render rule, like the Ar rounding.
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
-function compoundName(cat, an, ascii) {
-  const exception = COMPOUNDS[ascii];
-  if (exception) return cap(exception);
-  return cap(`${an.ru} ${cat.ru2}`);
-}
+// The Russian name of a substance is built by F.compoundName — the same
+// function the browser calls to fill the tooltip of the cell that links here,
+// so the two can never disagree. The rule and the reason the H⁺ column carries
+// two names («Сульфид водорода, сероводород») are documented there, in
+// public/formula.js; this file only supplies the data it needs.
+const compoundName = (cat, an, ascii) =>
+  F.compoundName(cat, an, ascii, COMPOUNDS, SOLUB.anions);
 
 // slug -> everything a page needs, built once from the table itself, so every
 // cell has a page and no page exists without a cell.

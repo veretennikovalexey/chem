@@ -64,8 +64,9 @@ chem/
 │   ├── solubility_table.json  # solubility: cations[23], anions[15], grid[15] rows of Р/М/Н/—
 │   │                    # ions carry ru (nominative), cls (class of substance)
 │   │                    # and, for cations, ru2 (genitive)
-│   └── compounds.json   # the 14 names that the naming rule cannot produce:
-│                        # the acids, formula -> name
+│   └── compounds.json   # the 14 traditional names of the H+ column, the half
+│                        # of the name no rule can produce (сероводород,
+│                        # серная кислота): formula -> name
 ├── public/              # everything the browser may load — the static root
 │   ├── index.html       # long form (18 groups): markup + root grid container
 │   ├── app.js           # fetches elements.json, renders the long-form grid of links
@@ -73,8 +74,9 @@ chem/
 │   ├── short.js         # renders the short-form table from the same elements.json
 │   ├── solubility_table.html  # solubility of acids, bases and salts in water
 │   ├── solubility_table.js    # renders it, one link per cell
-│   ├── formula.js       # ion labels, formulas, page slugs, atom counts —
-│   │                    # loaded by the browser AND required by server.js
+│   ├── formula.js       # ion labels, formulas, page slugs, atom counts and
+│   │                    # substance names — loaded by the browser AND
+│   │                    # required by server.js
 │   └── style.css        # both grids + solubility table + hover + card styles
 ├── server/
 │   └── server.js        # Node server: static files + dynamic /N.html element
@@ -830,6 +832,89 @@ a real mouse click on the NaHCO₃ square opens `nahco3.html` — «Гидрок
 regression — 118 cells on the long form, 90 on the short, oxygen's card, Cl 35.5
 and NaCl 58.5 all intact, no console errors, no failed requests.
 
+## Task 17 — «Сульфид водорода, сероводород»: two names in the H⁺ column — ✅ DONE
+
+**Goal (todo-18-08-2026.txt):** H₂S was called «Сероводородная кислота». The
+teacher sets «Найди объём сульфида водорода, если его масса равна 17 грамм»,
+so the table has to say **Сульфид водорода**; Russian Wikipedia calls the
+substance **Сероводород**, hence «Сульфид водорода, сероводород» — and the same
+treatment for every other substance of the hydrogen column.
+
+**The rule was already there — it was being suppressed.** «Сульфид водорода» is
+exactly what the general naming rule produces: H⁺ carries `ru2` = «водорода», so
+`an.ru + " " + cat.ru2` gives «сульфид водорода», «сульфат водорода», «ацетат
+водорода» for all 15 cells. `compounds.json` existed to *override* that with the
+acid name. So nothing was added: the override became an **addition**, the card
+now prints the computed name **and** the stored one, and `compounds.json` shrank
+to the half that genuinely cannot be computed — «сероводород», «серная кислота».
+The word «водорода» is gone from the data file entirely; it is derived, and a
+check forbids it from coming back.
+
+**Which name comes first — decided by oxygen in the anion.**
+
+- **бескислородные** (F⁻ Cl⁻ Br⁻ I⁻ S²⁻) — **systematic first**: «Сульфид
+  водорода, сероводород», «Хлорид водорода, хлороводород (соляная кислота)».
+  That is also the honest order chemically: H₂S and HCl are gases, while
+  «сероводородная» and «соляная кислота» name their solutions in water.
+- **кислородсодержащие** (SO₄²⁻ NO₃⁻ CO₃²⁻ CH₃COO⁻ …) — **traditional first**:
+  «Серная кислота, сульфат водорода». «Сульфат водорода» is mechanically correct
+  and stands in no Russian textbook, so a pupil copying the first name off the
+  card writes the one the teacher expects; the second is there so the cell can
+  still be found by the name the rule suggests. **Chosen in chat** over applying
+  the literal pattern to all 15.
+- The test is oxygen **inside the anion**, read with `atomCounts(an.sym).O` — the
+  same parser that computes the molar mass. No new field: a stored flag
+  «бескислородная кислота» could drift from the formula, the formula cannot drift
+  from itself.
+
+**Water is the exception to the exception.** Its anion is OH⁻, so the rule would
+say «гидроксид водорода», which is not a name of water. H₂O stays **«Вода»**; its
+systematic name, «оксид водорода», is already on the card — as the class.
+
+**H⁺ × HCO₃⁻ had to be redirected as well.** The cell is carbonic acid (Task 16),
+`formulaAscii()` already returns H₂CO₃ for it, and the naïve name would have been
+«гидрокарбонат водорода» — the tooltip and the page it opens would have called
+one substance two things. `compoundName()` therefore swaps the **ion** for CO₃²⁻,
+taken from the same `anions` array, so the word «карбонат» is not written in code.
+
+**The name moved into `public/formula.js`.** The tooltip now carries it, so the
+browser needs the very name the server prints. `compoundName()` sits beside
+`formulaAscii()` and `slug()` in the one module both processes load;
+`server.js` only supplies the data. `solubility_table.js` gained a second
+`fetch` — `compounds.json`, over the existing `/*.json` route.
+
+**Name in the tooltip of all 345 cells** — «H₂S — Сульфид водорода, сероводород —
+растворимо», «NaCl — Хлорид натрия — растворимо». **Chosen in chat** over the H⁺
+column alone: the name is the thing being looked up, and hovering is cheaper than
+opening the page.
+
+**Class deliberately untouched.** H₂S still reads «Класс: кислота». The table is
+«Растворимость кислот, оснований и солей», HCl and H₂S are its бескислородные
+кислоты, and renaming a substance does not move it out of its column.
+
+**Verified:** `check-names.js` — **1119 checks, 0 errors.** The 15 names of the
+H⁺ column are written out a second time inside the checker and compared one by
+one; both H₂CO₃ cells come out «Угольная кислота, карбонат водорода»; the
+**other 330 cells are identical** to what the old rule produced, re-derived
+independently; the first/second order matches the oxygen test for all 14
+non-water cells; `compounds.json` holds 14 keys, none containing «водорода», and
+every key is reachable from a real cell; all **344 pages → 200** and each
+contains its own name; `/h2s.html` reads «Сульфид водорода, сероводород», 34
+г/моль, and the word «сероводородная» appears nowhere on it; `/compounds.json`
+is served to the browser; no regression — NaCl «Хлорид натрия» 58.5, NaHCO₃
+«Гидрокарбонат натрия» кислая соль 84, Fe(OH)₃, H₂O «Вода» (and *not*
+«гидроксид водорода»), oxygen's card, 118 elements, `/hhco3.html` `/nope.html`
+`/999.html` → 404.
+
+*Chromium (46):* 345 linked cells, every tooltip in three parts, the 14 H⁺
+tooltips character for character, both H₂CO₃ cells named identically, six
+tooltips outside the column unchanged, 23 headers, the side rail
+`OH⁻ … HCO₃⁻ CH₃COO⁻ SiO₃²⁻`, no overlaps, 4 legend rows; a real mouse click on
+the H₂S square opens `h2s.html` — «Сульфид водорода, сероводород», кислота,
+растворимо, 34 г/моль, ions H⁺ and S²⁻ — and the S²⁻ link opens the sulfur card;
+no regression: 118 cells on both forms, oxygen's card, Cl 35.5, NaCl 58.5,
+H₂O «Вода», 0 console errors, 0 failed requests.
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server\server.js`, via `start.cmd`), dependency-free —
@@ -848,6 +933,18 @@ and NaCl 58.5 all intact, no console errors, no failed requests.
   The grid is stored as 15 strings, one per anion; formulas are computed, never
   stored. Judgement calls where sources disagree are listed in
   `work-12-08-2026-2.txt` and, for the bicarbonates, `work-17-08-2026.txt`.
+- **Названия столбца H⁺ (Task 17):** every cell of the H⁺ column shows **two**
+  names. **Order is decided by oxygen in the anion:** бескислородные (F⁻ Cl⁻ Br⁻
+  I⁻ S²⁻) print the systematic name first — «Сульфид водорода, сероводород»,
+  «Хлорид водорода, хлороводород (соляная кислота)» — because H₂S and HCl are
+  gases and the acid names belong to their aqueous solutions; кислородсодержащие
+  print the traditional name first — «Серная кислота, сульфат водорода» —
+  because «сульфат водорода» is in no textbook and the first name is the one a
+  pupil copies. **Water is the exception:** «Вода» alone, since the rule would
+  produce «гидроксид водорода»; its «оксид водорода» is printed as the class.
+  The H⁺ × HCO₃⁻ cell is named as the carbonate one — it is the same substance.
+  Names appear in the **tooltip of all 345 cells**, not just on the page.
+
 - **Гидрокарбонаты (Task 16):** HCO₃⁻ is the 15th anion, placed directly under
   CO₃²⁻. The row holds **only Р and «—»** — every hydrogen carbonate that exists
   is soluble. **Р means soluble, not isolable:** Ca(HCO₃)₂, Mg(HCO₃)₂,
@@ -862,14 +959,16 @@ and NaCl 58.5 all intact, no console errors, no failed requests.
   the carbonate one. That is the only collision, and `formulaAscii()` has three
   exceptions for it and its kin — H₂O, CH₃COOH, H₂CO₃.
   Formula, class, solubility, molar mass (Task 15) and the ion links are
-  **computed**, and so is the **name**: *anion + cation in the genitive* covers
-  330 of the 345 cells from the `ru2` field on the cations. Only the acids (the
-  H⁺ column, «вода» included) are written out — 15 cells, 14 entries — in
-  `data/compounds.json`. The **class** comes from the anion's `cls` field
-  (основание / соль / кислая соль); only the H⁺ column is decided in code.
+  **computed**, and so is the **name**: *anion + cation in the genitive* names
+  **all 345** cells from the `ru2` field on the cations — «хлорид натрия», and,
+  since H⁺ carries «водорода», «сульфид водорода» too. The 15 cells of the H⁺
+  column carry a **second, traditional name** that no rule can produce
+  («сероводород», «серная кислота»); those 14 entries are the whole of
+  `data/compounds.json` (Task 17). The **class** comes from the anion's `cls`
+  field (основание / соль / кислая соль); only the H⁺ column is decided in code.
   **No description on the card** — dropped at the user's request. The formula
-  code that both the browser and the server need lives once, in
-  `public/formula.js`.
+  code *and the naming rule*, both of which the browser and the server need,
+  live once, in `public/formula.js`.
 - **Scope:** grid cells show a single centered letter; the category colors are the
   warm metal tint (Tasks 5–6) and the cool noble-gas tint (Task 8), both on both
   forms.

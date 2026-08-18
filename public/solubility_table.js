@@ -12,9 +12,17 @@
 // ионов, поэтому данные нельзя рассинхронизировать с подписями.
 //
 // formula.js подключён в solubility_table.html раньше этого файла; оттуда
-// берутся ionText, formula, formulaAscii и slug. Тот же самый файл читает
-// server.js, когда отдаёт страницу вещества, — формула в клетке, адрес
-// ссылки и заголовок страницы по построению совпадают.
+// берутся ionText, formula, formulaAscii, slug и compoundName. Тот же самый
+// файл читает server.js, когда отдаёт страницу вещества, — формула в клетке,
+// адрес ссылки, подсказка и заголовок страницы по построению совпадают.
+//
+// Отсюда и второй запрос: в подсказке клетки стоит название вещества, а его
+// невычислимую половину («сероводород», «серная кислота») хранит
+// data/compounds.json. Сервер отдаёт любой /*.json из data/, так что файл
+// берётся по имени, как и первый. Названия НЕ пересобираются здесь: их даёт
+// compoundName() из formula.js — та же функция, что печатает заголовок
+// страницы вещества. Иначе подсказка и страница, на которую она ведёт, рано
+// или поздно назвали бы одно вещество по-разному.
 
 const CLASS = { Р: "sol-p", М: "sol-m", Н: "sol-n", "—": "sol-x" };
 
@@ -32,9 +40,11 @@ function cell(className, text, col, row, title, href) {
   return div;
 }
 
-fetch("solubility_table.json")
-  .then((r) => r.json())
-  .then((data) => {
+Promise.all([
+  fetch("solubility_table.json").then((r) => r.json()),
+  fetch("compounds.json").then((r) => r.json()),
+])
+  .then(([data, compounds]) => {
     const { cations, anions, grid, legend } = data;
     document.getElementById("sol-title").textContent = data.title;
     document.title = data.title;
@@ -57,9 +67,13 @@ fetch("solubility_table.json")
       values.forEach((v, j) => {
         const c = cations[j];
         const ascii = formulaAscii(c, a);
-        const name = `${formulaText(ascii)} — ${legendOf(legend, v)}`;
+        // «H₂S — Сульфид водорода, сероводород — растворимо»: формула, название,
+        // растворимость. Название теперь читается, не открывая страницу.
+        const hint =
+          `${formulaText(ascii)} — ${compoundName(c, a, ascii, compounds, anions)}` +
+          ` — ${legendOf(legend, v)}`;
         table.appendChild(
-          cell("sol-cell " + CLASS[v], v, j + 2, row, name, slug(ascii) + ".html")
+          cell("sol-cell " + CLASS[v], v, j + 2, row, hint, slug(ascii) + ".html")
         );
       });
     });
