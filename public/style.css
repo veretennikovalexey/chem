@@ -41,6 +41,14 @@ body {
    sand — the group VIII А column reads at a glance without shouting. */
 .cell.noble { background: #eaf1f8; }
 
+/* Неметаллы (the 22 of the teacher's list — the classic «диагональ B–At»
+   of the Russian school course, noble gases included): водянистый
+   светло-голубой фон. Declared after `.noble` on purpose: the six noble gases
+   of the list are non-metals too and must carry the one highlight the list
+   asks for, so this rule wins for them. Og alone keeps the noble tint — it is
+   not in the list. */
+.cell.nonmet { background: #cfeaf7; }
+
 /* Default: show the symbol. The atomic number is hidden. */
 .cell .num { display: none; }
 
@@ -53,6 +61,7 @@ body {
 .cell:hover { background: #eeeeee; }
 .cell.metal:hover { background: #f4e4c6; }
 .cell.noble:hover { background: #cfe0f0; }
+.cell.nonmet:hover { background: #b3dcef; }
 .cell:hover .sym { display: none; }
 .cell:hover .num { display: inline; }
 

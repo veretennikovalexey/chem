@@ -28,7 +28,7 @@ Keep it updated as new tasks are agreed in chat.
 ## Data storage — local JSON, not SQLite
 
 - All element data lives in **`data/elements.json`** (one array, one object per element:
-  `{ num, sym, col, row, en, ru, group, metal, noble, ar, conf }`). This is the **single source of truth** — the
+  `{ num, sym, col, row, en, ru, group, metal, noble, nonmet, ar, conf }`). This is the **single source of truth** — the
   front-end grid and the server-rendered element pages both read it.
 - **Why JSON instead of SQLite:** the dataset is 118 fixed, read-only rows. A JSON
   file is dependency-free (no `npm install`, no native module, no experimental
@@ -60,7 +60,7 @@ be started from any working directory.
 chem/
 ├── data/
 │   ├── elements.json    # 118 elements
-│   │                    # { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, dia, ar, conf }
+│   │                    # { num, sym, col, row, en, ru, group, ox, oxm, metal, noble, nonmet, dia, ar, conf }
 │   ├── solubility_table.json  # solubility: cations[23], anions[15], grid[15] rows of Р/М/Н/—
 │   │                    # ions carry ru (nominative), cls (class of substance)
 │   │                    # and, for cations, ru2 (genitive)
@@ -111,7 +111,7 @@ prefix.
   lives in `server.js`, the 322 solubility formulas in `solubility_table.js`.
   Data and its captions must not be able to drift apart.
 - All 118 elements live in `data/elements.json` as
-  `{ num, sym, col, row, en, ru, group, metal, noble, conf }` —
+  `{ num, sym, col, row, en, ru, group, metal, noble, nonmet, conf }` —
   the lanthanides (57–71) sit in grid row 9 and the actinides (89–103) in grid
   row 10 (row 8 is an empty spacer).
 - Prefer CSS for layout and the hover effect; use JS only for data + rendering.
@@ -915,6 +915,64 @@ the H₂S square opens `h2s.html` — «Сульфид водорода, сер�
 no regression: 118 cells on both forms, oxygen's card, Cl 35.5, NaCl 58.5,
 H₂O «Вода», 0 console errors, 0 failed requests.
 
+## Task 18 — Неметаллы: watery light-blue tint on both forms — ✅ DONE
+
+**Goal (todo-20-08-2026.txt):** the teacher's list of non-metals — водород,
+гелий, бор, углерод, азот, кислород, фтор, неон, кремний, фосфор, сера, хлор,
+аргон, мышьяк, селен, бром, криптон, теллур, йод, ксенон, астат, радон — must
+carry a background tint on **both** tables; suggested colour «водянистый
+светло-голубой».
+
+**Whose list is it?** It is the classic **«диагональ B–At»** of the Russian
+school course: B–Si–As–Te–At and everything above and right of that line, plus
+hydrogen and the noble gases. So it is not an arbitrary set — it is the standard
+school classification, and it is what the pupil will be marked against. Two
+typos in the brief were read through: «арон» → аргон (Ar), «криптом» → криптон
+(Kr). 22 elements.
+
+**It is not the `metal:false` set.** The project already had a non-metal set —
+the 26 elements with `metal:false` — and it is **not** the same list: it also
+holds **Ge, Sb, Ts, Og**. Ge and Sb sit *below* the diagonal (metals in the
+school course; the project counts them as metalloids), Ts and Og are synthetic
+and appear in no syllabus. So the tint could not reuse `metal`.
+
+**How it was built:**
+
+1. **A flag of its own** — a new boolean `nonmet` in `elements.json`, right after
+   `noble`, true for exactly those 22. `metal` is **untouched**: the 92 metals
+   keep their sand tint, and Ge, Sb, Ts keep the white they already had. One
+   source of truth, same pattern as `metal` and `noble` (Tasks 6 and 8).
+2. **Both renderers** — `app.js` and `short.js` compose the class list
+   `"cell" + metal + noble + nonmet`, so the series rows under the short form are
+   covered for free by the shared `cellLink()`.
+3. **Colour** — `.cell.nonmet { background: #cfeaf7; }`, a watery light blue,
+   deliberately stronger than the two whisper-tints around it, because this one
+   is meant to *pick the elements out*. Hover `#b3dcef`, a shade deeper of the
+   same tone, so a non-metal still visibly answers the mouse.
+4. **`.nonmet` is declared after `.noble` on purpose.** Six of the seven noble
+   gases (He Ne Ar Kr Xe Rn) are on the teacher's list, and one list must mean
+   one colour, so the later rule wins for them. **Og is the only cell that still
+   shows the noble tint** — it is a noble gas (Task 8) but not on the list.
+5. **No new CSS anywhere else** — `style.css` is shared by both pages, so the
+   long and the short form were coloured by the same three lines.
+
+**Verified.** *Data:* 118 elements, exactly 22 carry `nonmet` and the set is
+character-for-character the teacher's list; `nonmet` is a boolean on all 118;
+92 metals and 7 noble gases unchanged; no element is both `metal` and `nonmet`;
+6 of the 7 noble gases are on the list; outside both sets exactly `Ge Sb Ts Og`;
+`conf` sums still equal Z for all 118 after the JSON was rewritten.
+*DOM shim:* both forms render 118 cells, 22 of them `.nonmet` and 92 `.metal`,
+with **zero class mismatches element by element** between the long and the short
+form. *CSS:* the tint is `#cfeaf7`, `.nonmet` is declared after `.noble`, and it
+has its own hover shade. *Chromium:* `/index.html` and `/short.html` — the
+computed background of O, He, Rn, At, As, Te is `rgb(207, 234, 247)` on **both**
+pages, Fe is the sand `rgb(253, 243, 227)`, Ge and Sb are white, Og alone is the
+noble `rgb(234, 241, 248)`; the blue block draws the B–At diagonal exactly, and
+on the short form every tinted cell stands in a **главная** (А) column. Routes
+`/index.html` `/short.html` `/style.css` `/app.js` `/short.js` `/elements.json`
+`/8.html` `/2.html` `/32.html` → 200.
+
+
 ## Decisions (resolved in chat)
 
 - **Server:** Node (`node server\server.js`, via `start.cmd`), dependency-free —
@@ -970,10 +1028,20 @@ H₂O «Вода», 0 console errors, 0 failed requests.
   code *and the naming rule*, both of which the browser and the server need,
   live once, in `public/formula.js`.
 - **Scope:** grid cells show a single centered letter; the category colors are the
-  warm metal tint (Tasks 5–6) and the cool noble-gas tint (Task 8), both on both
-  forms.
+  warm metal tint (Tasks 5–6), the cool noble-gas tint (Task 8) and the watery
+  light-blue non-metal tint (Task 18), all on both forms.
 - **Metals:** metalloids (B, Si, Ge, As, Sb, Te, At) count as **non**-metals and stay
   white; Po is a metal. Ts and Og are treated as non-metals.
+- **Неметаллы (Task 18):** the highlighted set is the **teacher's list of 22** —
+  the classic «диагональ B–At» of the Russian school course, noble gases
+  included: H He B C N O F Ne Si P S Cl Ar As Se Br Kr Te I Xe At Rn. It is the
+  `metal:false` set **minus Ge, Sb, Ts, Og**: Ge and Sb fall below the diagonal
+  (metals in the school course), Ts and Og are synthetic and off the syllabus.
+  It lives in its own boolean `nonmet` — the `metal` flag is **not** touched, so
+  the sand tint of the 92 metals is unchanged and the four odd ones out keep the
+  white they already had. The six noble gases of the list carry both `noble` and
+  `nonmet` and show the non-metal tint (one list, one highlight); **Og** is the
+  only cell left showing the noble tint.
 - **Noble gases:** He Ne Ar Kr Xe Rn **and Og** (group by column 18, even though Og
   is predicted to be reactive) — they get the cool tint, never the metal one.
 - **Group VIII of the short form:** 4 columns — А for the noble gases, three Б for
@@ -1027,5 +1095,10 @@ H₂O «Вода», 0 console errors, 0 failed requests.
   symbol), the way a wall chart does it.
 - The short form could also show the А/Б subgroup on the element page, or mark the
   s-/p-/d-/f-block with color on both grids.
-- A small legend under the grids ("металлы / инертные газы") would make the two
-  tints self-explanatory; the element page could show the same tint in its header.
+- A small legend under the grids ("металлы / неметаллы / инертные газы") would
+  make the three tints self-explanatory; the element page could show the same
+  tint in its header.
+- Ge and Sb are white — neither metal-sand nor non-metal-blue. By the teacher's
+  own list they are metals (below the B–At diagonal); flipping their `metal`
+  flag is a one-word change per element, and it would close the two white gaps.
+  Ts stays a question of its own: it is a synthetic halogen no syllabus covers.

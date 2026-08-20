@@ -14,8 +14,9 @@
 //   subgroup: А (главная) for s-/p-block (col 1-2, 13-18),
 //             Б (побочная) for the d-block (col 3-12)
 // Each cell links to /<num>.html; the symbol->number hover is pure CSS.
-// Metals carry the extra `metal` class (the flag lives in elements.json), so
-// the tint is identical in the short and the long form — series rows included.
+// Metals, noble gases and non-metals carry an extra class (`metal` / `noble` /
+// `nonmet`; the flags live in elements.json), so the tint is identical in the
+// short and the long form — series rows included.
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 const VIII_A = 15; // lattice column of the noble gases; the triads take 16..18
@@ -48,7 +49,10 @@ function place(el) {
 function cellLink(el, mark) {
   const cell = document.createElement("a");
   cell.className =
-    "cell" + (el.metal ? " metal" : "") + (el.noble ? " noble" : "");
+    "cell" +
+    (el.metal ? " metal" : "") +
+    (el.noble ? " noble" : "") +
+    (el.nonmet ? " nonmet" : "");
   cell.href = el.num + ".html";
   cell.title = el.ru;
 
